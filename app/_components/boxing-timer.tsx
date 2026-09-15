@@ -70,8 +70,10 @@ import SoundSettings from '@/app/_components/sound-settings'
 import { toast } from 'sonner'
 import { useSoundSettings } from '@/lib/audio/useSoundSettings'
 import type { SoundRole } from '@/lib/audio/types'
+import { getWorkoutRepository } from '@/lib/data/repositoryClient'
+import { buildSessionRecord } from '@/lib/data/sessionRecording'
 import { segmentAt } from '@/lib/timer/compute'
-import type { Segment, WorkoutSpec } from '@/lib/timer/types'
+import type { Segment, TimelinePlan, WorkoutSpec } from '@/lib/timer/types'
 import { useTimerEngine, type TimerSoundEvent } from '@/lib/timer/useTimerEngine'
 import {
   DEFAULT_PREP_SECONDS,
@@ -265,6 +267,66 @@ export default function BoxingTimer() {
     [prepSeconds, totalRounds, roundTotal, restTotal]
   )
 
+  /* ---------------------------------------------------------------------- */
+  /* Session recording (requirements 6.1, 6.2, 6.3, 6.4)                     */
+  /* ---------------------------------------------------------------------- */
+
+  /** Wall-clock start of the current run; `null` whenever no run is in progress. */
+  const runStartedAtRef = useRef<number | null>(null)
+  /** Guards against recording the same run twice (finish, then the stop that follows). */
+  const runRecordedRef = useRef<boolean>(false)
+  /** The active plan and the engine's latest effective elapsed time, for the stop path. */
+  const planRef = useRef<TimelinePlan | null>(null)
+  const elapsedRef = useRef<number>(0)
+
+  /** The name stored on the session — the loaded workout's, or a generic label. */
+  const activeWorkoutName = useMemo<string>(() => {
+    const loaded = (presets ?? []).find((p) => p?.id === activePresetId)
+    return loaded?.name ?? 'Custom workout'
+  }, [presets, activePresetId])
+
+  /**
+   * Records the run that just ended.
+   *
+   * `finished` counts every planned round; a stop counts only the `round` segments that fully
+   * elapsed (requirement 6.2). The duration is the engine's effective elapsed time, which has
+   * already had every paused interval removed (requirement 6.3) — at the finish that is exactly
+   * `plan.totalMs`. Name and type are copied onto the record, so deleting the workout later
+   * leaves history intact (requirement 6.4).
+   */
+  const recordRun = useCallback(
+    (outcome: 'finished' | 'stopped') => {
+      const startedAtMs = runStartedAtRef.current
+      const activePlan = planRef.current
+      if (startedAtMs === null || activePlan === null || runRecordedRef.current) return
+
+      runRecordedRef.current = true
+      runStartedAtRef.current = null
+
+      const completed = outcome === 'finished'
+      const record = buildSessionRecord({
+        id: generateId(),
+        workoutId: activePresetId,
+        workoutName: activeWorkoutName,
+        type: activeType,
+        plan: activePlan,
+        elapsedMs: completed ? activePlan.totalMs : elapsedRef.current,
+        completed,
+        startedAtMs,
+        endedAtMs: Date.now(),
+      })
+
+      // Local-first: the repository has the record before the network is involved, so a
+      // failure here only concerns *syncing* (requirements 6.7, 8.2, 8.10).
+      void getWorkoutRepository()
+        .recordSession(record)
+        .catch(() => {
+          toast.error('This session was saved on this device but could not be synced.')
+        })
+    },
+    [activePresetId, activeWorkoutName, activeType]
+  )
+
   /**
    * Announces a transition through the sound engine and posts its notification.
    *
@@ -282,6 +344,9 @@ export default function BoxingTimer() {
 
       if (event.role === 'finished') {
         soundEngine.play('finished', 'finished')
+        // The engine emits `finished` exactly once per run, which makes it the recording
+        // trigger for a completed workout (requirement 6.1).
+        recordRun('finished')
         toast.success('Workout complete! Great job.', { icon: '🏆' })
         return
       }
@@ -293,7 +358,7 @@ export default function BoxingTimer() {
       if (event.role === 'roundStart') postPhaseNotification('round', round, rounds)
       else if (event.role === 'restStart') postPhaseNotification('rest', round, rounds)
     },
-    [totalRounds, soundEngine]
+    [totalRounds, soundEngine, recordRun]
   )
 
   const {
@@ -325,6 +390,11 @@ export default function BoxingTimer() {
   /** The latest snapshot, read by effects that must not re-run every 250 ms tick. */
   const snapshotRef = useRef(snapshot)
   snapshotRef.current = snapshot
+
+  // Kept current for the session recorder, which runs from callbacks defined above the
+  // engine (requirement 6.3 — the duration it reads is the engine's effective elapsed time).
+  planRef.current = plan
+  elapsedRef.current = snapshot.elapsedWorkoutMs
 
   /** Bumped on every hidden→visible transition, to force a re-schedule. */
   const [resumeNonce, setResumeNonce] = useState<number>(0)
@@ -455,6 +525,9 @@ export default function BoxingTimer() {
     // A fresh run reuses the previous run's segment keys, so the "already sounded" record
     // has to be cleared or round 1 would be silenced by round 1 of the last workout.
     soundEngine.resetPlayback()
+    // The run's own start timestamp, stored on the session record (requirement 6.1).
+    runStartedAtRef.current = Date.now()
+    runRecordedRef.current = false
     start()
     toast('Get ready…', { icon: '🥊' })
   }, [status, resume, start, soundEngine])
@@ -465,16 +538,27 @@ export default function BoxingTimer() {
     pause()
   }, [pause, soundEngine])
 
-  const handleStop = useCallback(() => {
+  /**
+   * Ends the current run.
+   *
+   * A run stopped before the engine reached `finished` is still recorded, with `completed`
+   * false and only the fully elapsed rounds counted (requirement 6.2). Recording happens
+   * *before* `stop()`, which resets the engine's elapsed time to 0.
+   */
+  const endRun = useCallback(() => {
+    recordRun('stopped')
     soundEngine.resetPlayback()
     stop()
-  }, [stop, soundEngine])
+  }, [recordRun, soundEngine, stop])
+
+  const handleStop = useCallback(() => {
+    endRun()
+  }, [endRun])
 
   const handleReset = useCallback(() => {
-    soundEngine.resetPlayback()
-    stop()
+    endRun()
     toast('Timer reset')
-  }, [stop, soundEngine])
+  }, [endRun])
 
   const handleEnableNotifications = useCallback(async () => {
     if (typeof window === 'undefined' || !('Notification' in window)) return
@@ -540,12 +624,12 @@ export default function BoxingTimer() {
       setPrepSeconds(Math.max(0, p.prepSeconds ?? DEFAULT_PREP_SECONDS))
       setActiveType(p.type ?? 'CUSTOM')
       setActivePresetId(p.id)
-      // Return the engine to idle so it adopts the loaded spec.
-      soundEngine.resetPlayback()
-      stop()
+      // Return the engine to idle so it adopts the loaded spec. Loading a workout mid-run
+      // ends that run, so it is recorded as a stop (requirement 6.2).
+      endRun()
       toast.success(`Loaded “${p.name}”`)
     },
-    [stop, soundEngine]
+    [endRun]
   )
 
   /**

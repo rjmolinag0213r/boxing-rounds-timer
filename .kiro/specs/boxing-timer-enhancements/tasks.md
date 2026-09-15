@@ -187,15 +187,15 @@ unit and integration tests.
     - Deterministic assertions, not property tests: these are fixed file contents with no input space
     - _Requirements: 9.7, 9.13_
 
-- [ ] 6. Evolve the preset model for Boxing and MMA
-  - [-] 6.1 Extend the `Preset` type and default workouts
+- [x] 6. Evolve the preset model for Boxing and MMA
+  - [x] 6.1 Extend the `Preset` type and default workouts
     - Add `type: WorkoutType` (`'BOXING' | 'MMA' | 'CUSTOM'`) and optional `prepSeconds` to the
       `Preset` interface in `lib/presets.ts`
     - Define the three typed Boxing defaults (Classic 12×3 / Amateur 3×2 / Speed 10×1, prep 5 s)
       and the two MMA defaults (Championship 5×5 and Regular 3×5, 300 s rounds, 60 s rest, prep 10 s)
     - _Requirements: 5.3, 5.4_
 
-  - [~] 6.2 Implement the v1 → v2 storage migration
+  - [x] 6.2 Implement the v1 → v2 storage migration
     - On load, migrate records under `boxing_timer_presets_v1` to `boxing_timer_presets_v2`,
       assigning type `BOXING` and prep 5 s while preserving `id`, `name`, `rounds`, `roundSeconds`,
       `restSeconds`, and `createdAt`
@@ -204,19 +204,19 @@ unit and integration tests.
     - Keep the existing catch-and-no-op behavior when localStorage is unavailable or full
     - _Requirements: 5.10, 5.11, 5.12_
 
-  - [ ]* 6.3 Write unit tests for the preset migration
+  - [x]* 6.3 Write unit tests for the preset migration
     - Assert field preservation, type/prep defaulting, idempotence on a second load, and the
       unavailable-storage path
     - _Requirements: 5.10, 5.11, 5.12_
 
-- [ ] 7. Build the custom workout builder
-  - [~] 7.1 Implement workout validation schemas
+- [x] 7. Build the custom workout builder
+  - [x] 7.1 Implement workout validation schemas
     - Create `lib/data/workoutSchemas.ts` with zod schemas enforcing name length 1–60, rounds 1–99,
       round duration 1–3600 s, rest duration 0–600 s, and prep duration 0–60 s
     - Return per-field error messages that identify the offending field
     - _Requirements: 5.6, 5.7_
 
-  - [~] 7.2 Create the workout builder component
+  - [x] 7.2 Create the workout builder component
     - Create `app/_components/workout-builder.tsx` with a `BOXING`/`MMA`/`CUSTOM` type selector and
       editable name, rounds, round duration, rest duration, and prep duration inputs
     - List the default workouts of the selected type as starting points
@@ -226,25 +226,25 @@ unit and integration tests.
       colors expressed through theme tokens
     - _Requirements: 5.1, 5.2, 5.5, 5.6, 5.7, 10.10_
 
-  - [~] 7.3 Wire workout selection and deletion into the timer view
+  - [x] 7.3 Wire workout selection and deletion into the timer view
     - Load a selected workout's rounds, round duration, rest duration, and prep duration into the
       active `WorkoutSpec` while the engine status is `idle`
     - Delete a saved workout without removing any existing session record
     - _Requirements: 5.8, 5.9_
 
-  - [ ]* 7.4 Write unit tests for workout validation bounds
+  - [x]* 7.4 Write unit tests for workout validation bounds
     - Cover each boundary value and each rejection path, asserting the named field
     - _Requirements: 5.6, 5.7_
 
-- [ ] 8. Build the configurable sound engine
-  - [~] 8.1 Define sound types and keep the synth tones as fallback
+- [x] 8. Build the configurable sound engine
+  - [x] 8.1 Define sound types and keep the synth tones as fallback
     - Create `lib/audio/types.ts` with `SoundRole` (`roundStart`, `restStart`, `warningTick`,
       `finished`), `SoundSource` (`synth` / `builtin` / `custom`), and `SoundSettings`
     - Keep `playRoundStartBell`, `playRestStartBuzzer`, and `playWarningTick` in `lib/audio.ts` as
       the default and fallback tones, adding the `finished` synth tone
     - _Requirements: 3.1, 3.7_
 
-  - [~] 8.2 Implement the custom sound store and upload validation
+  - [x] 8.2 Implement the custom sound store and upload validation
     - Create `lib/audio/customStore.ts` persisting validated uploads as IndexedDB blobs keyed by a
       generated `blobId`
     - Accept only `audio/*` MIME, size ≤ 5 MB, and decoded duration ≤ 10 s; on any failure report
@@ -252,7 +252,7 @@ unit and integration tests.
     - Support deleting a stored blob and enumerating stored blobs for selection
     - _Requirements: 3.4, 3.5_
 
-  - [~] 8.3 Implement the sound engine
+  - [x] 8.3 Implement the sound engine
     - Create `lib/audio/soundEngine.ts` implementing `unlock`, `play`, `scheduleAt`,
       `cancelScheduled`, `setSettings`, and `loadCustom`
     - Pre-schedule each active segment's boundary sound and its warning ticks against the
@@ -265,14 +265,14 @@ unit and integration tests.
     - Cache decoded `AudioBuffer`s in memory per session
     - _Requirements: 3.3, 3.6, 3.7, 3.8, 3.9, 3.11, 4.2, 4.4, 4.5_
 
-  - [~] 8.4 Add the built-in sound registry
+  - [x] 8.4 Add the built-in sound registry
     - Create `lib/audio/builtins.ts` listing the bundled `public/sounds/*.mp3` asset paths
       (boxing bell, air horn, buzzer, beep) with display names
     - Add `public/sounds/README.md` recording royalty-free attribution for each asset
     - Degrade to the synth fallback when a registered asset is missing from the deployment
     - _Requirements: 3.2, 3.7_
 
-  - [~] 8.5 Create the sound settings component
+  - [x] 8.5 Create the sound settings component
     - Create `app/_components/sound-settings.tsx` presenting, per role, a selection control listing
       every synth tone, every bundled asset, and every stored custom file
     - Add per-role preview playing the assigned source once at the configured volume, a volume
@@ -281,23 +281,23 @@ unit and integration tests.
     - Give every interactive control an accessible name and express all colors through tokens
     - _Requirements: 3.2, 3.5, 3.10, 4.8, 10.8, 10.10_
 
-  - [~] 8.6 Replace direct audio calls in the timer view with the sound engine
+  - [x] 8.6 Replace direct audio calls in the timer view with the sound engine
     - Route the engine's sound events through `SoundEngine`, unlocking and resuming the
       AudioContext inside the Start gesture and pre-scheduling each segment's boundaries on entry
     - Reschedule future boundaries on visibility resume
     - _Requirements: 4.1, 4.2, 4.3, 4.5_
 
-  - [ ]* 8.7 Write unit tests for the sound layer
+  - [x]* 8.7 Write unit tests for the sound layer
     - Cover upload validation rejections (size, duration, MIME, decode failure), the assigned→synth
       fallback chain, mute and volume application, settings restoration after reload, and role
       reassignment when a custom blob is deleted
     - _Requirements: 3.4, 3.5, 3.6, 3.7, 3.8, 3.9, 3.11_
 
-- [~] 9. Checkpoint - engine, theme, builder, and sound
+- [x] 9. Checkpoint - engine, theme, builder, and sound
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 10. Add persistence, API routes, and the hybrid repository
-  - [~] 10.1 Add the Prisma models
+  - [-] 10.1 Add the Prisma models
     - Add `User`, `Account`, `Session`, `VerificationToken`, the `WorkoutType` enum, `Workout`, and
       `WorkoutSession` to `prisma/schema.prisma`, keeping the existing datasource and generator
     - Include `@@index([userId])` on `Workout` and `@@index([userId, endedAt])` on `WorkoutSession`,

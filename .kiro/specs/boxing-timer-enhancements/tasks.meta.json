@@ -195,6 +195,11 @@
         "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
         "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
         "timestamp": 1789443338681
+      },
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789443568474
       }
     ],
     "6.2 Implement the v1 → v2 storage migration": [
@@ -202,6 +207,11 @@
         "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
         "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
         "timestamp": 1789441303333
+      },
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789443571550
       }
     ],
     "7.1 Implement workout validation schemas": [
@@ -209,6 +219,16 @@
         "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
         "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
         "timestamp": 1789441303336
+      },
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789443577508
+      },
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789444088270
       }
     ],
     "7.2 Create the workout builder component": [
@@ -216,6 +236,11 @@
         "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
         "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
         "timestamp": 1789441303340
+      },
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789444092444
       }
     ],
     "7.3 Wire workout selection and deletion into the timer view": [
@@ -223,6 +248,11 @@
         "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
         "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
         "timestamp": 1789441303343
+      },
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789444096023
       }
     ],
     "8.1 Define sound types and keep the synth tones as fallback": [
@@ -230,6 +260,16 @@
         "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
         "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
         "timestamp": 1789441303347
+      },
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789444104186
+      },
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789445310042
       }
     ],
     "8.2 Implement the custom sound store and upload validation": [
@@ -237,6 +277,11 @@
         "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
         "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
         "timestamp": 1789441303350
+      },
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789445313132
       }
     ],
     "8.3 Implement the sound engine": [
@@ -244,6 +289,11 @@
         "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
         "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
         "timestamp": 1789441303355
+      },
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789445316083
       }
     ],
     "8.4 Add the built-in sound registry": [
@@ -251,6 +301,11 @@
         "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
         "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
         "timestamp": 1789441303361
+      },
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789445319305
       }
     ],
     "8.5 Create the sound settings component": [
@@ -258,6 +313,11 @@
         "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
         "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
         "timestamp": 1789441303364
+      },
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789445323511
       }
     ],
     "8.6 Replace direct audio calls in the timer view with the sound engine": [
@@ -265,6 +325,11 @@
         "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
         "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
         "timestamp": 1789441303368
+      },
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789445326686
       }
     ],
     "9. Checkpoint - engine, theme, builder, and sound": [
@@ -272,6 +337,11 @@
         "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
         "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
         "timestamp": 1789441303372
+      },
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789445354713
       }
     ],
     "10.1 Add the Prisma models": [
@@ -279,6 +349,11 @@
         "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
         "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
         "timestamp": 1789441303375
+      },
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789445358316
       }
     ],
     "10.2 Generate the initial migration and confirm the deployment scripts": [
@@ -531,6 +606,48 @@
         "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
         "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
         "timestamp": 1789443335681
+      }
+    ],
+    "6. Evolve the preset model for Boxing and MMA": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789443571553
+      }
+    ],
+    "6.3 Write unit tests for the preset migration": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789443574599
+      }
+    ],
+    "7. Build the custom workout builder": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789444096028
+      }
+    ],
+    "7.4 Write unit tests for workout validation bounds": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789444099353
+      }
+    ],
+    "8. Build the configurable sound engine": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789445326691
+      }
+    ],
+    "8.7 Write unit tests for the sound layer": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789445330877
       }
     ]
   }
