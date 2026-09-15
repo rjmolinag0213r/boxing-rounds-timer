@@ -296,15 +296,15 @@ unit and integration tests.
 - [x] 9. Checkpoint - engine, theme, builder, and sound
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 10. Add persistence, API routes, and the hybrid repository
-  - [-] 10.1 Add the Prisma models
+- [x] 10. Add persistence, API routes, and the hybrid repository
+  - [x] 10.1 Add the Prisma models
     - Add `User`, `Account`, `Session`, `VerificationToken`, the `WorkoutType` enum, `Workout`, and
       `WorkoutSession` to `prisma/schema.prisma`, keeping the existing datasource and generator
     - Include `@@index([userId])` on `Workout` and `@@index([userId, endedAt])` on `WorkoutSession`,
       and the denormalized `workoutName`/`type` snapshot fields
     - _Requirements: 12.1_
 
-  - [~] 10.2 Generate the initial migration and confirm the deployment scripts
+  - [x] 10.2 Generate the initial migration and confirm the deployment scripts
     - Generate the committed migration under `prisma/migrations/` defining all six models
     - Confirm `build` runs `prisma generate` before `next build`, `start` binds to `$PORT`,
       `migrate:deploy` runs `prisma migrate deploy`, `engines.node` pins major version 20, and
@@ -314,7 +314,7 @@ unit and integration tests.
     - Deterministic config assertions only; no deployment is performed by this task
     - _Requirements: 12.1, 12.2, 12.3, 12.4, 12.5, 12.6, 12.7, 12.8_
 
-  - [~] 10.3 Define shared DTOs and API validation schemas
+  - [x] 10.3 Define shared DTOs and API validation schemas
     - Repurpose `lib/types.ts` to export only timer-domain types: `WorkoutType`, `WorkoutDTO`, and
       `WorkoutSessionDTO`
     - Add zod request schemas enforcing `rounds >= 1`, `roundSeconds >= 1`, `restSeconds >= 0`,
@@ -322,7 +322,7 @@ unit and integration tests.
       non-empty name of length ≤ 60
     - _Requirements: 6.5, 8.8, 13.1_
 
-  - [~] 10.4 Add the auth route handler and session helper
+  - [x] 10.4 Add the auth route handler and session helper
     - Create `app/api/auth/[...nextauth]/route.ts` using the existing `next-auth` and
       `@next-auth/prisma-adapter` dependencies
     - Add a server helper resolving the optional authenticated `userId` for route handlers
@@ -330,27 +330,27 @@ unit and integration tests.
       successfully in local-only mode when `DATABASE_URL` is absent
     - _Requirements: 8.6, 8.7, 12.9, 12.10_
 
-  - [~] 10.5 Implement the workouts API
+  - [x] 10.5 Implement the workouts API
     - Create `app/api/workouts/route.ts` (GET/POST) and `app/api/workouts/[id]/route.ts` (DELETE)
     - Upsert by client-generated identifier so repeated sends store exactly one row
     - Scope every read and write to the authenticated `userId`; respond 401 without a session,
       400 with each invalid field named, and 503 when `DATABASE_URL` is unset or unreachable
     - _Requirements: 8.5, 8.6, 8.7, 8.8, 8.9_
 
-  - [~] 10.6 Implement the sessions API
+  - [x] 10.6 Implement the sessions API
     - Create `app/api/sessions/route.ts` (GET/POST) with the same upsert, `userId` scoping, and
       401/400/503 behavior
     - Reject records whose completed round count falls outside `[0, roundsPlanned]` or whose total
       duration is negative, returning the validation error to the caller
     - _Requirements: 6.1, 6.5, 8.5, 8.6, 8.7, 8.8, 8.9_
 
-  - [~] 10.7 Add the readiness healthcheck endpoint
+  - [x] 10.7 Add the readiness healthcheck endpoint
     - Create `app/api/health/route.ts` returning HTTP 200 when the server is ready to serve, without
       requiring a database connection
     - Point `railway.json` `healthcheckPath` at it
     - _Requirements: 12.11_
 
-  - [~] 10.8 Implement the hybrid workout repository
+  - [x] 10.8 Implement the hybrid workout repository
     - Create `lib/data/workoutRepository.ts` with the `WorkoutRepository` interface and
       `LocalWorkoutRepository` (localStorage workouts + IndexedDB sessions),
       `RemoteWorkoutRepository` (`/api/workouts`, `/api/sessions`), and `SyncingRepository`
@@ -363,12 +363,12 @@ unit and integration tests.
       indicator, mark failed writes pending, and retry them on the next successful request
     - _Requirements: 6.7, 8.1, 8.2, 8.3, 8.4, 8.10, 8.11, 12.10_
 
-  - [ ]* 10.9 Write integration tests for the route handlers
+  - [x]* 10.9 Write integration tests for the route handlers
     - Exercise `/api/workouts` and `/api/sessions` with and without an authenticated session,
       asserting `userId` scoping, idempotent upsert, 401, 400 field naming, and 503 handling
     - _Requirements: 8.5, 8.6, 8.7, 8.8, 8.9_
 
-  - [~] 10.10 Record sessions from the timer view
+  - [x] 10.10 Record sessions from the timer view
     - On reaching `finished`, record a session with workout name, type, planned rounds, completed
       rounds, total duration, completed = true, and the start and end timestamps
     - On stop before finishing, record completed = false with a completed round count equal to the
@@ -377,13 +377,13 @@ unit and integration tests.
       store name and type on the session record independent of the workout definition
     - _Requirements: 6.1, 6.2, 6.3, 6.4_
 
-  - [ ]* 10.11 Write unit tests for the syncing repository
+  - [x]* 10.11 Write unit tests for the syncing repository
     - Cover local-only reads/writes, local-first mirroring, first-device fetch, sign-in push,
       sign-out return to local-only, pending-record retry, and the 503 fallback indicator
     - _Requirements: 6.7, 8.1, 8.2, 8.3, 8.4, 8.10, 8.11_
 
 - [ ] 11. Build the history view
-  - [~] 11.1 Implement history aggregates and duration formatting
+  - [-] 11.1 Implement history aggregates and duration formatting
     - Create `lib/data/historyAggregates.ts` computing exact current-calendar-week sums of session
       count, completed rounds, and total durations over sessions whose end timestamps fall in the week
     - Format durations as `mm:ss` or `h:mm:ss`

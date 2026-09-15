@@ -354,6 +354,11 @@
         "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
         "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
         "timestamp": 1789445358316
+      },
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789446517864
       }
     ],
     "10.2 Generate the initial migration and confirm the deployment scripts": [
@@ -361,6 +366,11 @@
         "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
         "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
         "timestamp": 1789441303379
+      },
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789446521123
       }
     ],
     "10.3 Define shared DTOs and API validation schemas": [
@@ -368,6 +378,11 @@
         "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
         "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
         "timestamp": 1789441303383
+      },
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789446523954
       }
     ],
     "10.4 Add the auth route handler and session helper": [
@@ -375,6 +390,11 @@
         "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
         "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
         "timestamp": 1789441303386
+      },
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789446526906
       }
     ],
     "10.5 Implement the workouts API": [
@@ -382,6 +402,11 @@
         "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
         "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
         "timestamp": 1789441303390
+      },
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789446529968
       }
     ],
     "10.6 Implement the sessions API": [
@@ -389,6 +414,11 @@
         "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
         "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
         "timestamp": 1789441303393
+      },
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789446533009
       }
     ],
     "10.7 Add the readiness healthcheck endpoint": [
@@ -396,6 +426,11 @@
         "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
         "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
         "timestamp": 1789441303397
+      },
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789446536373
       }
     ],
     "10.8 Implement the hybrid workout repository": [
@@ -403,6 +438,11 @@
         "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
         "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
         "timestamp": 1789441303403
+      },
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789446539282
       }
     ],
     "10.10 Record sessions from the timer view": [
@@ -410,6 +450,11 @@
         "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
         "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
         "timestamp": 1789441303406
+      },
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789446546046
       }
     ],
     "11.1 Implement history aggregates and duration formatting": [
@@ -417,6 +462,11 @@
         "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
         "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
         "timestamp": 1789441303410
+      },
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789446554143
       }
     ],
     "11.2 Create the history view component": [
@@ -648,6 +698,27 @@
         "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
         "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
         "timestamp": 1789445330877
+      }
+    ],
+    "10.9 Write integration tests for the route handlers": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789446542889
+      }
+    ],
+    "10. Add persistence, API routes, and the hybrid repository": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789446546050
+      }
+    ],
+    "10.11 Write unit tests for the syncing repository": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789446550186
       }
     ]
   }
