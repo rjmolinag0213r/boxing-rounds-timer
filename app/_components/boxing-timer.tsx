@@ -18,7 +18,12 @@
  * so light and dark mode are decided in `app/globals.css` with no component-level colour
  * branching (requirements 9.7, 9.8, 9.12, 9.14).
  *
- * Requirements: 1.11, 1.12, 2.12, 4.1, 4.3, 4.6, 4.7, 9.7, 9.8, 9.10, 9.11, 9.12, 9.14
+ * Saved workouts are loaded into the configuration — rounds, round duration, rest duration and
+ * prep duration — only after `stop()` returns the engine to `idle`, which is the one status in
+ * which it adopts a new spec (requirement 5.8). Deleting a workout rewrites the workout list
+ * alone and never touches recorded sessions (requirement 5.9).
+ *
+ * Requirements: 1.11, 1.12, 2.12, 4.1, 4.3, 4.6, 4.7, 5.8, 5.9, 9.7, 9.8, 9.10, 9.11, 9.12, 9.14
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -38,16 +43,14 @@ import {
   Save,
   Trash2,
   Dumbbell,
-  Plus,
-  Minus,
   ListChecks,
   Check,
   Trophy,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
 import { Card } from '@/components/ui/card'
+import { DurationField, NumberStepper } from '@/app/_components/workout-inputs'
 import { toast } from 'sonner'
 import {
   unlockAudio,
@@ -59,6 +62,7 @@ import { segmentAt } from '@/lib/timer/compute'
 import type { WorkoutSpec } from '@/lib/timer/types'
 import { useTimerEngine, type TimerSoundEvent } from '@/lib/timer/useTimerEngine'
 import {
+  DEFAULT_PREP_SECONDS,
   DEFAULT_PRESETS,
   formatSeconds,
   generateId,
@@ -66,6 +70,7 @@ import {
   savePresets,
   workoutTypeLabel,
   type Preset,
+  type WorkoutType,
 } from '@/lib/presets'
 
 /** The phases the view paints. `paused` is rendered with its underlying segment's accent. */
@@ -129,8 +134,6 @@ const PHASE_ACCENTS: Record<VisualPhase, PhaseAccent> = {
 /** The rest accent applied to the rest-duration field's icon, matching `PHASE_ACCENTS.rest`. */
 const REST_ICON_CLASS = 'text-emerald-500 dark:text-emerald-400'
 
-const PREP_SECONDS = 5
-
 /** Number of trailing whole seconds of a round that get a warning tick (requirement 4.3). */
 const WARNING_TICK_SECONDS = 3
 
@@ -171,6 +174,12 @@ export default function BoxingTimer() {
   const [restMinutes, setRestMinutes] = useState<number>(1)
   const [restSecondsField, setRestSecondsField] = useState<number>(0)
   const [totalRounds, setTotalRounds] = useState<number>(12)
+  /**
+   * The lead-in before round 1. Part of the configuration (not a constant) so that loading
+   * a saved workout can carry its own prep duration into the spec — MMA defaults use 10 s
+   * where the boxing defaults use 5 s (requirement 5.8).
+   */
+  const [prepSeconds, setPrepSeconds] = useState<number>(DEFAULT_PREP_SECONDS)
 
   // Runtime (no countdown state here — see the module docblock)
   const [muted, setMuted] = useState<boolean>(false)
@@ -182,6 +191,11 @@ export default function BoxingTimer() {
   const [presets, setPresetsState] = useState<Preset[]>([])
   const [presetName, setPresetName] = useState<string>('')
   const [activePresetId, setActivePresetId] = useState<string | null>(null)
+  /**
+   * The workout family the loaded workout came from, so re-saving the configuration keeps
+   * its Boxing/MMA identity instead of silently demoting it to `CUSTOM` (requirement 5.8).
+   */
+  const [activeType, setActiveType] = useState<WorkoutType>('CUSTOM')
 
   const mutedRef = useRef<boolean>(false)
   useEffect(() => {
@@ -218,12 +232,12 @@ export default function BoxingTimer() {
 
   const spec = useMemo<WorkoutSpec>(
     () => ({
-      prepSeconds: PREP_SECONDS,
+      prepSeconds: Math.max(0, prepSeconds ?? 0),
       rounds: Math.max(1, totalRounds ?? 1),
       roundSeconds: roundTotal,
       restSeconds: restTotal,
     }),
-    [totalRounds, roundTotal, restTotal]
+    [prepSeconds, totalRounds, roundTotal, restTotal]
   )
 
   /**
@@ -403,13 +417,13 @@ export default function BoxingTimer() {
     const newPreset: Preset = {
       id: generateId(),
       name,
-      // Hand-configured from the timer panel; the Workout Builder assigns
-      // BOXING/MMA explicitly.
-      type: 'CUSTOM',
+      // Inherits the loaded workout's family; a hand-built configuration is `CUSTOM`.
+      // The Workout Builder assigns BOXING/MMA explicitly.
+      type: activeType,
       rounds: totalRounds,
       roundSeconds: roundTotal,
       restSeconds: restTotal,
-      prepSeconds: PREP_SECONDS,
+      prepSeconds: Math.max(0, prepSeconds ?? 0),
       createdAt: Date.now(),
     }
     const next = [...(presets ?? []), newPreset]
@@ -418,8 +432,15 @@ export default function BoxingTimer() {
     setPresetName('')
     setActivePresetId(newPreset.id)
     toast.success(`Saved “${name}”`)
-  }, [presetName, totalRounds, roundTotal, restTotal, presets])
+  }, [presetName, totalRounds, roundTotal, restTotal, prepSeconds, activeType, presets])
 
+  /**
+   * Loads a saved workout into the active configuration (requirement 5.8).
+   *
+   * The engine only adopts a new spec while its status is `idle`, so `stop()` runs first;
+   * the rounds, round duration, rest duration **and** prep duration then flow into the
+   * `WorkoutSpec` through the configuration state on the next render.
+   */
   const handleLoadPreset = useCallback(
     (p: Preset) => {
       if (!p) return
@@ -432,6 +453,9 @@ export default function BoxingTimer() {
       setRestMinutes(restM)
       setRestSecondsField(restS)
       setTotalRounds(Math.max(1, p.rounds ?? 1))
+      // A record stored before prep durations existed defaults to 5 s (requirement 5.10).
+      setPrepSeconds(Math.max(0, p.prepSeconds ?? DEFAULT_PREP_SECONDS))
+      setActiveType(p.type ?? 'CUSTOM')
       setActivePresetId(p.id)
       // Return the engine to idle so it adopts the loaded spec.
       lastTickKeyRef.current = null
@@ -441,13 +465,19 @@ export default function BoxingTimer() {
     [stop]
   )
 
+  /**
+   * Deletes a saved workout (requirement 5.9).
+   *
+   * Only the workout list is rewritten: session records live in their own store and are
+   * never touched here, so history survives the deletion of the workout it came from.
+   */
   const handleDeletePreset = useCallback(
     (id: string) => {
       const next = (presets ?? []).filter((p) => p?.id !== id)
       setPresetsState(next)
       savePresets(next)
       if (activePresetId === id) setActivePresetId(null)
-      toast('Preset deleted')
+      toast('Workout deleted')
     },
     [presets, activePresetId]
   )
@@ -690,10 +720,23 @@ export default function BoxingTimer() {
                   icon={<Coffee className={`w-3.5 h-3.5 ${REST_ICON_CLASS}`} />}
                 />
 
+                <NumberStepper
+                  label="Prep countdown (sec)"
+                  value={prepSeconds}
+                  min={0}
+                  max={60}
+                  onChange={(v) => setPrepSeconds(clamp(v, 0, 60))}
+                  disabled={isActive}
+                />
+
                 <div className="pt-2 text-xs text-muted-foreground flex items-center justify-between">
                   <span>Total time</span>
                   <span className="font-mono">
-                    {formatSeconds(totalRounds * roundTotal + Math.max(0, totalRounds - 1) * restTotal)}
+                    {formatSeconds(
+                      Math.max(0, prepSeconds ?? 0) +
+                        totalRounds * roundTotal +
+                        Math.max(0, totalRounds - 1) * restTotal
+                    )}
                   </span>
                 </div>
               </div>
@@ -784,121 +827,6 @@ export default function BoxingTimer() {
           <p>Tip: audio unlocks after you press Start. The countdown stays accurate even if you switch apps.</p>
         </footer>
       </main>
-    </div>
-  )
-}
-
-function NumberStepper({
-  label,
-  value,
-  min,
-  max,
-  onChange,
-  disabled,
-}: {
-  label: string
-  value: number
-  min: number
-  max: number
-  onChange: (v: number) => void
-  disabled?: boolean
-}) {
-  return (
-    <div>
-      <Label className="text-xs text-muted-foreground">{label}</Label>
-      <div className="mt-1.5 flex items-center gap-2">
-        <Button
-          type="button"
-          size="icon"
-          variant="outline"
-          className="h-9 w-9 flex-shrink-0"
-          onClick={() => onChange((value ?? 0) - 1)}
-          disabled={disabled || (value ?? 0) <= min}
-          aria-label={`Decrease ${label}`}
-        >
-          <Minus className="w-3.5 h-3.5" />
-        </Button>
-        <Input
-          type="number"
-          value={value}
-          min={min}
-          max={max}
-          onChange={(e) => {
-            const n = parseInt(e.target.value ?? '0', 10)
-            onChange(Number.isFinite(n) ? n : min)
-          }}
-          disabled={disabled}
-          className="h-9 text-center font-mono"
-        />
-        <Button
-          type="button"
-          size="icon"
-          variant="outline"
-          className="h-9 w-9 flex-shrink-0"
-          onClick={() => onChange((value ?? 0) + 1)}
-          disabled={disabled || (value ?? 0) >= max}
-          aria-label={`Increase ${label}`}
-        >
-          <Plus className="w-3.5 h-3.5" />
-        </Button>
-      </div>
-    </div>
-  )
-}
-
-function DurationField({
-  label,
-  minutes,
-  seconds,
-  onChange,
-  disabled,
-  icon,
-}: {
-  label: string
-  minutes: number
-  seconds: number
-  onChange: (m: number, s: number) => void
-  disabled?: boolean
-  icon?: React.ReactNode
-}) {
-  return (
-    <div>
-      <div className="flex items-center gap-1.5">
-        {icon}
-        <Label className="text-xs text-muted-foreground">{label}</Label>
-      </div>
-      <div className="mt-1.5 grid grid-cols-2 gap-2">
-        <div>
-          <Input
-            type="number"
-            min={0}
-            max={59}
-            value={minutes}
-            onChange={(e) => {
-              const n = parseInt(e.target.value ?? '0', 10)
-              onChange(Number.isFinite(n) ? n : 0, seconds)
-            }}
-            disabled={disabled}
-            className="h-9 text-center font-mono"
-          />
-          <p className="mt-1 text-[10px] text-center text-muted-foreground uppercase tracking-wider">min</p>
-        </div>
-        <div>
-          <Input
-            type="number"
-            min={0}
-            max={59}
-            value={seconds}
-            onChange={(e) => {
-              const n = parseInt(e.target.value ?? '0', 10)
-              onChange(minutes, Number.isFinite(n) ? n : 0)
-            }}
-            disabled={disabled}
-            className="h-9 text-center font-mono"
-          />
-          <p className="mt-1 text-[10px] text-center text-muted-foreground uppercase tracking-wider">sec</p>
-        </div>
-      </div>
     </div>
   )
 }
