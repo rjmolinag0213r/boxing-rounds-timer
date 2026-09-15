@@ -1,7 +1,19 @@
 'use client'
 
 /**
- * The timer view.
+ * The timer panel.
+ *
+ * This is one tab of `boxing-app.tsx`, which owns the page chrome (header, tabs, sound
+ * settings). Everything here is the timer itself: the countdown, its controls, the round
+ * configuration and the saved-workout list.
+ *
+ * The layout is mobile-first (requirement 10). Start, Pause and Stop each clear a 44 × 44 CSS
+ * pixel touch target; below 640 px the primary action fills the container width and sits above
+ * the secondary controls (requirements 10.3, 10.4); the countdown is monospaced with tabular
+ * numerals and grows from `text-5xl` below 640 px to `text-8xl` at 1024 px and up
+ * (requirement 10.5); and below 640 px the round configuration moves out of the side panel into
+ * a bottom-sheet drawer (requirement 10.9). Every framer-motion duration is capped under
+ * `prefers-reduced-motion: reduce` (requirement 10.7).
  *
  * This component holds **no countdown state**. Every displayed timing value — the
  * countdown digits, the phase label, the round number and the progress ring — is derived
@@ -26,10 +38,12 @@
  * Saved workouts are loaded into the configuration — rounds, round duration, rest duration and
  * prep duration — only after `stop()` returns the engine to `idle`, which is the one status in
  * which it adopts a new spec (requirement 5.8). Deleting a workout rewrites the workout list
- * alone and never touches recorded sessions (requirement 5.9).
+ * alone and never touches recorded sessions (requirement 5.9). That list comes from
+ * `lib/data/workoutLibrary.ts` — the *shared* store, not a private copy — so a workout saved in
+ * the Builder tab appears here immediately and neither view can overwrite the other's writes.
  *
  * Requirements: 1.11, 1.12, 2.12, 3.3, 4.1, 4.2, 4.3, 4.5, 4.6, 4.7, 5.8, 5.9, 9.7, 9.8,
- * 9.10, 9.11, 9.12, 9.14
+ * 9.10, 9.11, 9.12, 9.14, 10.3, 10.4, 10.5, 10.7, 10.9, 10.11
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -43,8 +57,6 @@ import {
   BellRing,
   Coffee,
   Info,
-  Volume2,
-  VolumeX,
   Settings2,
   Save,
   Trash2,
@@ -52,40 +64,44 @@ import {
   ListChecks,
   Check,
   Trophy,
-  SlidersHorizontal,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog'
+  Drawer,
+  DrawerContent,
+  DrawerDescription,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from '@/components/ui/drawer'
 import { DurationField, NumberStepper } from '@/app/_components/workout-inputs'
-import SoundSettings from '@/app/_components/sound-settings'
 import { toast } from 'sonner'
 import { useSoundSettings } from '@/lib/audio/useSoundSettings'
 import type { SoundRole } from '@/lib/audio/types'
 import { getWorkoutRepository } from '@/lib/data/repositoryClient'
+import { useWorkoutLibrary } from '@/lib/data/workoutLibrary'
 import { buildSessionRecord } from '@/lib/data/sessionRecording'
+import { motionDurationSeconds, motionOffset, usePrefersReducedMotion } from '@/lib/ui/motion'
+import { useIsMobileViewport } from '@/lib/ui/useMediaQuery'
 import { segmentAt } from '@/lib/timer/compute'
 import type { Segment, TimelinePlan, WorkoutSpec } from '@/lib/timer/types'
 import { useTimerEngine, type TimerSoundEvent } from '@/lib/timer/useTimerEngine'
 import {
   DEFAULT_PREP_SECONDS,
-  DEFAULT_PRESETS,
   formatSeconds,
   generateId,
-  loadPresets,
-  savePresets,
   workoutTypeLabel,
   type Preset,
   type WorkoutType,
 } from '@/lib/presets'
+
+/**
+ * The minimum touch target requirement 10.3 sets for Start, Pause and Stop, as the utilities
+ * that realise it. Exported so the accessibility test asserts the same value the view uses.
+ */
+export const TOUCH_TARGET_CLASS = 'min-h-[44px] min-w-[44px]'
 
 /** The phases the view paints. `paused` is rendered with its underlying segment's accent. */
 type VisualPhase = 'idle' | 'prep' | 'round' | 'rest' | 'finished'
@@ -216,14 +232,19 @@ export default function BoxingTimer() {
    * four role assignments, and the settings dialog toggles the very same value
    * (requirements 3.6, 3.9).
    */
-  const { engine: soundEngine, muted, toggleMuted } = useSoundSettings()
-  const [soundSettingsOpen, setSoundSettingsOpen] = useState<boolean>(false)
+  const { engine: soundEngine } = useSoundSettings()
   const [notificationPermission, setNotificationPermission] = useState<
     NotificationPermission | 'unsupported'
   >('unsupported')
 
-  // Presets
-  const [presets, setPresetsState] = useState<Preset[]>([])
+  /** Reduced-motion preference, applied to every framer-motion duration below (req 10.7). */
+  const reducedMotion = usePrefersReducedMotion()
+  /** Below 640 px the round configuration lives in a bottom sheet (requirement 10.9). */
+  const isMobile = useIsMobileViewport()
+  const [settingsOpen, setSettingsOpen] = useState<boolean>(false)
+
+  // Presets — the shared library, so the Builder tab and this panel cannot diverge.
+  const { workouts: presets, saveWorkout, deleteWorkout } = useWorkoutLibrary()
   const [presetName, setPresetName] = useState<string>('')
   const [activePresetId, setActivePresetId] = useState<string | null>(null)
   /**
@@ -231,16 +252,6 @@ export default function BoxingTimer() {
    * its Boxing/MMA identity instead of silently demoting it to `CUSTOM` (requirement 5.8).
    */
   const [activeType, setActiveType] = useState<WorkoutType>('CUSTOM')
-
-  // Load presets from localStorage on mount
-  useEffect(() => {
-    const saved = loadPresets()
-    if (saved && saved.length > 0) {
-      setPresetsState(saved)
-    } else {
-      setPresetsState(DEFAULT_PRESETS)
-    }
-  }, [])
 
   // Reflect the current notification permission so the opt-in control can be offered.
   useEffect(() => {
@@ -593,13 +604,14 @@ export default function BoxingTimer() {
       prepSeconds: Math.max(0, prepSeconds ?? 0),
       createdAt: Date.now(),
     }
-    const next = [...(presets ?? []), newPreset]
-    setPresetsState(next)
-    savePresets(next)
+    // Through the shared library: the Builder tab sees this workout on its next render, and
+    // an account mirrors it (requirements 8.2, 10.1).
+    void saveWorkout(newPreset)
     setPresetName('')
     setActivePresetId(newPreset.id)
+    // Requirement 10.11: a saved workout is confirmed by a transient toast.
     toast.success(`Saved “${name}”`)
-  }, [presetName, totalRounds, roundTotal, restTotal, prepSeconds, activeType, presets])
+  }, [presetName, totalRounds, roundTotal, restTotal, prepSeconds, activeType, saveWorkout])
 
   /**
    * Loads a saved workout into the active configuration (requirement 5.8).
@@ -640,13 +652,11 @@ export default function BoxingTimer() {
    */
   const handleDeletePreset = useCallback(
     (id: string) => {
-      const next = (presets ?? []).filter((p) => p?.id !== id)
-      setPresetsState(next)
-      savePresets(next)
+      void deleteWorkout(id)
       if (activePresetId === id) setActivePresetId(null)
       toast('Workout deleted')
     },
-    [presets, activePresetId]
+    [deleteWorkout, activePresetId]
   )
 
   const clamp = (v: number, min: number, max: number) =>
@@ -659,362 +669,365 @@ export default function BoxingTimer() {
   const circumference = 2 * Math.PI * radius
   const dashOffset = circumference * (1 - progressPct / 100)
 
+
+  /**
+   * The round configuration. Rendered in the side panel at 640 px and up, and inside the
+   * bottom-sheet drawer below it (requirement 10.9) — one definition, so the two presentations
+   * cannot drift apart, and only ever one of them mounted, so no control's accessible name is
+   * duplicated in the accessibility tree.
+   */
+  const settingsFields = (
+    <div className="space-y-4">
+      <NumberStepper
+        label="Rounds"
+        value={totalRounds}
+        min={1}
+        max={99}
+        onChange={(v) => setTotalRounds(clamp(v, 1, 99))}
+        disabled={isActive}
+      />
+
+      <DurationField
+        label="Round duration"
+        minutes={roundMinutes}
+        seconds={roundSeconds}
+        onChange={(m, s) => {
+          setRoundMinutes(clamp(m, 0, 59))
+          setRoundSeconds(clamp(s, 0, 59))
+        }}
+        disabled={isActive}
+        icon={<Bell className="w-3.5 h-3.5 text-primary" />}
+      />
+
+      <DurationField
+        label="Rest duration"
+        minutes={restMinutes}
+        seconds={restSecondsField}
+        onChange={(m, s) => {
+          setRestMinutes(clamp(m, 0, 59))
+          setRestSecondsField(clamp(s, 0, 59))
+        }}
+        disabled={isActive}
+        icon={<Coffee className={`w-3.5 h-3.5 ${REST_ICON_CLASS}`} />}
+      />
+
+      <NumberStepper
+        label="Prep countdown (sec)"
+        value={prepSeconds}
+        min={0}
+        max={60}
+        onChange={(v) => setPrepSeconds(clamp(v, 0, 60))}
+        disabled={isActive}
+      />
+
+      <div className="pt-2 text-xs text-muted-foreground flex items-center justify-between">
+        <span>Total time</span>
+        <span className="font-mono tabular-nums">
+          {formatSeconds(
+            Math.max(0, prepSeconds ?? 0) +
+              totalRounds * roundTotal +
+              Math.max(0, totalRounds - 1) * restTotal
+          )}
+        </span>
+      </div>
+    </div>
+  )
+
   return (
-    <div className="min-h-screen w-full bg-background text-foreground">
-      {/* Background tint */}
-      <div className={`fixed inset-0 -z-10 bg-gradient-to-b ${bgTintClass} transition-colors duration-700`} />
+    <>
+      {/* Background tint — the whole page glows with the active phase's accent. */}
+      <div
+        className={`fixed inset-0 -z-10 bg-gradient-to-b ${bgTintClass} transition-colors duration-700 motion-reduce:transition-none`}
+      />
 
-      {/* Header */}
-      <header className="sticky top-0 z-30 w-full backdrop-blur bg-background/70 border-b border-border/40">
-        <div className="mx-auto max-w-[1200px] px-4 sm:px-6 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center">
-              <Bell className="w-4 h-4 text-primary" />
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6">
+        {/* Timer panel */}
+        <Card className="relative p-4 sm:p-6 lg:p-10 bg-card/60 backdrop-blur shadow-lg overflow-hidden">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-2">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={phaseLabel}
+                  initial={{ opacity: 0, y: motionOffset(-4, reducedMotion) }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: motionOffset(4, reducedMotion) }}
+                  transition={{ duration: motionDurationSeconds(0.25, reducedMotion) }}
+                  className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold tracking-widest ${phaseBadgeColorClass} bg-foreground/5`}
+                >
+                  {snapshot.phase === 'paused' ? (
+                    <Pause className="w-3.5 h-3.5" />
+                  ) : (
+                    <>
+                      {visualPhase === 'round' && <Bell className="w-3.5 h-3.5" />}
+                      {visualPhase === 'rest' && <Coffee className="w-3.5 h-3.5" />}
+                      {visualPhase === 'finished' && <Trophy className="w-3.5 h-3.5" />}
+                      {visualPhase === 'prep' && <Dumbbell className="w-3.5 h-3.5" />}
+                      {visualPhase === 'idle' && <Dumbbell className="w-3.5 h-3.5" />}
+                    </>
+                  )}
+                  <span>{phaseLabel}</span>
+                </motion.div>
+              </AnimatePresence>
             </div>
-            <span className="font-display font-semibold tracking-tight">Boxing Timer</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={toggleMuted}
-              aria-label={muted ? 'Unmute' : 'Mute'}
-              className="gap-2"
-            >
-              {muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
-              <span className="hidden sm:inline text-xs">{muted ? 'Muted' : 'Sound On'}</span>
-            </Button>
-
-            {/* Sound settings. Task 12.1 gives this a Drawer on mobile; a Dialog makes the
-                feature usable today. */}
-            <Dialog open={soundSettingsOpen} onOpenChange={setSoundSettingsOpen}>
-              <DialogTrigger asChild>
-                <Button variant="ghost" size="sm" className="gap-2" aria-label="Sound settings">
-                  <SlidersHorizontal className="w-4 h-4" />
-                  <span className="hidden sm:inline text-xs">Sounds</span>
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
-                <DialogHeader>
-                  <DialogTitle>Sounds</DialogTitle>
-                  <DialogDescription>
-                    Pick a sound for each moment of the workout, upload your own bell, and set the
-                    volume.
-                  </DialogDescription>
-                </DialogHeader>
-                <SoundSettings />
-              </DialogContent>
-            </Dialog>
-          </div>
-        </div>
-      </header>
-
-      <main className="mx-auto max-w-[1200px] px-4 sm:px-6 py-8 sm:py-12">
-        {/* Purpose statement */}
-        <div className="text-center mb-8">
-          <h1 className="font-display text-3xl sm:text-4xl font-semibold tracking-tight">
-            Train by the <span className="text-primary">bell</span>.
-          </h1>
-          <p className="mt-2 text-sm sm:text-base text-muted-foreground">
-            Configure rounds and rests, save presets, and let the timer keep you honest.
-          </p>
-        </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6">
-          {/* Timer panel */}
-          <Card className="relative p-6 sm:p-10 bg-card/60 backdrop-blur shadow-lg overflow-hidden">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-2">
-                <AnimatePresence mode="wait">
-                  <motion.div
-                    key={phaseLabel}
-                    initial={{ opacity: 0, y: -4 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: 4 }}
-                    transition={{ duration: 0.25 }}
-                    className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold tracking-widest ${phaseBadgeColorClass} bg-foreground/5`}
-                  >
-                    {snapshot.phase === 'paused' ? (
-                      <Pause className="w-3.5 h-3.5" />
-                    ) : (
-                      <>
-                        {visualPhase === 'round' && <Bell className="w-3.5 h-3.5" />}
-                        {visualPhase === 'rest' && <Coffee className="w-3.5 h-3.5" />}
-                        {visualPhase === 'finished' && <Trophy className="w-3.5 h-3.5" />}
-                        {visualPhase === 'prep' && <Dumbbell className="w-3.5 h-3.5" />}
-                        {visualPhase === 'idle' && <Dumbbell className="w-3.5 h-3.5" />}
-                      </>
-                    )}
-                    <span>{phaseLabel}</span>
-                  </motion.div>
-                </AnimatePresence>
-              </div>
-              <div className="text-xs sm:text-sm text-muted-foreground font-mono">
-                Round{' '}
-                <span className="text-foreground font-semibold">
-                  {Math.min(snapshot.currentRound, snapshot.totalRounds)}
-                </span>{' '}
-                / {snapshot.totalRounds}
-              </div>
+            <div className="text-xs sm:text-sm text-muted-foreground font-mono tabular-nums">
+              Round{' '}
+              <span className="text-foreground font-semibold">
+                {Math.min(snapshot.currentRound, snapshot.totalRounds)}
+              </span>{' '}
+              / {snapshot.totalRounds}
             </div>
+          </div>
 
-            {/* Circular timer */}
-            <div className="flex items-center justify-center py-4">
-              <div className="relative" style={{ width: size, height: size, maxWidth: '100%' }}>
-                <svg viewBox={`0 0 ${size} ${size}`} className="w-full h-full -rotate-90">
-                  <circle
-                    cx={size / 2}
-                    cy={size / 2}
-                    r={radius}
-                    strokeWidth={stroke}
-                    className="stroke-foreground/10"
-                    fill="none"
-                  />
-                  <motion.circle
-                    cx={size / 2}
-                    cy={size / 2}
-                    r={radius}
-                    strokeWidth={stroke}
-                    className={`${ringColorClass} transition-colors duration-500`}
-                    fill="none"
-                    strokeLinecap="round"
-                    strokeDasharray={circumference}
-                    animate={{ strokeDashoffset: dashOffset }}
-                    transition={{ duration: 0.9, ease: 'linear' }}
-                  />
-                </svg>
-                <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <div
-                    className={`font-mono font-semibold tabular-nums tracking-tight ${phaseColorClass} text-6xl sm:text-7xl`}
-                    role="timer"
-                    aria-live="off"
-                  >
-                    {formatSeconds(displaySeconds)}
-                  </div>
-                  <div className="mt-2 text-xs uppercase tracking-[0.25em] text-muted-foreground">
-                    {phaseCaption}
-                  </div>
+          {/* Circular timer */}
+          <div className="flex items-center justify-center py-4">
+            <div className="relative" style={{ width: size, height: size, maxWidth: '100%' }}>
+              <svg viewBox={`0 0 ${size} ${size}`} className="w-full h-full -rotate-90">
+                <circle
+                  cx={size / 2}
+                  cy={size / 2}
+                  r={radius}
+                  strokeWidth={stroke}
+                  className="stroke-foreground/10"
+                  fill="none"
+                />
+                <motion.circle
+                  cx={size / 2}
+                  cy={size / 2}
+                  r={radius}
+                  strokeWidth={stroke}
+                  className={`${ringColorClass} transition-colors duration-500 motion-reduce:transition-none`}
+                  fill="none"
+                  strokeLinecap="round"
+                  strokeDasharray={circumference}
+                  animate={{ strokeDashoffset: dashOffset }}
+                  transition={{
+                    duration: motionDurationSeconds(0.9, reducedMotion),
+                    ease: 'linear',
+                  }}
+                />
+              </svg>
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                {/*
+                  Requirement 10.5: monospaced with tabular numerals so the digits never shift
+                  width, and a size that steps up across the breakpoints — text-5xl below
+                  640 px, text-8xl from 1024 px.
+                */}
+                <div
+                  className={`font-mono font-semibold tabular-nums tracking-tight ${phaseColorClass} text-5xl sm:text-6xl lg:text-8xl`}
+                  role="timer"
+                  aria-live="off"
+                >
+                  {formatSeconds(displaySeconds)}
+                </div>
+                <div className="mt-2 text-xs uppercase tracking-[0.25em] text-muted-foreground">
+                  {phaseCaption}
                 </div>
               </div>
             </div>
+          </div>
 
-            {/* Controls */}
-            <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-              {!isRunning ? (
-                // The stock default variant supplies bg-primary / text-primary-foreground
-                // (requirement 9.8), so no color classes are set here.
-                <Button size="lg" onClick={handleStart} className="gap-2 px-6 shadow-md">
-                  <Play className="w-4 h-4" />
-                  {status === 'paused' ? 'Resume' : 'Start Workout'}
-                </Button>
-              ) : (
-                <Button
-                  size="lg"
-                  onClick={handlePause}
-                  variant="secondary"
-                  className="gap-2 px-6 shadow-md"
-                >
-                  <Pause className="w-4 h-4" />
-                  Pause
-                </Button>
-              )}
+          {/*
+            Controls (requirements 10.3, 10.4). Below 640 px this is a column: the primary
+            action fills the container width on its own row, with the secondary controls beneath
+            it. From 640 px up the three sit on one centred row.
+          */}
+          <div className="mt-6 flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-center">
+            {!isRunning ? (
+              // The stock default variant supplies bg-primary / text-primary-foreground
+              // (requirement 9.8), so no color classes are set here.
+              <Button
+                size="lg"
+                onClick={handleStart}
+                className={`w-full gap-2 px-6 shadow-md sm:w-auto ${TOUCH_TARGET_CLASS}`}
+              >
+                <Play className="w-4 h-4" />
+                {status === 'paused' ? 'Resume' : 'Start Workout'}
+              </Button>
+            ) : (
+              <Button
+                size="lg"
+                onClick={handlePause}
+                variant="secondary"
+                className={`w-full gap-2 px-6 shadow-md sm:w-auto ${TOUCH_TARGET_CLASS}`}
+              >
+                <Pause className="w-4 h-4" />
+                Pause
+              </Button>
+            )}
+
+            <div className="flex items-center justify-center gap-3 sm:contents">
               <Button
                 size="lg"
                 variant="outline"
                 onClick={handleStop}
-                className="gap-2 px-6"
+                className={`flex-1 gap-2 px-6 sm:flex-none ${TOUCH_TARGET_CLASS}`}
                 disabled={status === 'idle'}
               >
                 <Square className="w-4 h-4" />
                 Stop
               </Button>
-              <Button size="lg" variant="ghost" onClick={handleReset} className="gap-2">
+              <Button
+                size="lg"
+                variant="ghost"
+                onClick={handleReset}
+                className={`flex-1 gap-2 sm:flex-none ${TOUCH_TARGET_CLASS}`}
+              >
                 <RotateCcw className="w-4 h-4" />
                 Reset
               </Button>
             </div>
+          </div>
 
-            {/* Background-audio limitation notice (requirement 4.6) */}
-            <div className="mt-8 flex items-start gap-2.5 rounded-lg bg-foreground/[0.03] px-3 py-2.5 text-[11px] leading-relaxed text-muted-foreground">
-              <Info className="mt-0.5 w-3.5 h-3.5 flex-shrink-0" aria-hidden="true" />
-              <div>
-                <p>
-                  <span className="font-semibold text-foreground">Background audio:</span> iOS
-                  suspends web audio while the browser is backgrounded or the screen is locked, so
-                  the bell and warning ticks will not sound during that time. The timer itself keeps
-                  running on wall-clock time and stays accurate — it catches up to the correct round
-                  and remaining time as soon as you return to the foreground.
+          {/* Below 640 px the configuration is a bottom sheet, not a side panel (req 10.9) */}
+          {isMobile && (
+            <Drawer open={settingsOpen} onOpenChange={setSettingsOpen}>
+              <DrawerTrigger asChild>
+                <Button
+                  variant="outline"
+                  className={`mt-3 w-full gap-2 ${TOUCH_TARGET_CLASS}`}
+                  aria-label="Timer settings"
+                >
+                  <Settings2 className="w-4 h-4" />
+                  Timer settings
+                </Button>
+              </DrawerTrigger>
+              <DrawerContent className="max-h-[85vh]">
+                <DrawerHeader>
+                  <DrawerTitle>Timer settings</DrawerTitle>
+                  <DrawerDescription>
+                    Rounds, round and rest durations, and the lead-in countdown.
+                  </DrawerDescription>
+                </DrawerHeader>
+                <div className="overflow-y-auto px-4 pb-8">{settingsFields}</div>
+              </DrawerContent>
+            </Drawer>
+          )}
+
+          {/* Background-audio limitation notice (requirement 4.6) */}
+          <div className="mt-8 flex items-start gap-2.5 rounded-lg bg-foreground/[0.03] px-3 py-2.5 text-[11px] leading-relaxed text-muted-foreground">
+            <Info className="mt-0.5 w-3.5 h-3.5 flex-shrink-0" aria-hidden="true" />
+            <div>
+              <p>
+                <span className="font-semibold text-foreground">Background audio:</span> iOS
+                suspends web audio while the browser is backgrounded or the screen is locked, so
+                the bell and warning ticks will not sound during that time. The timer itself keeps
+                running on wall-clock time and stays accurate — it catches up to the correct round
+                and remaining time as soon as you return to the foreground.
+              </p>
+              {notificationPermission === 'default' && (
+                <Button
+                  variant="link"
+                  size="sm"
+                  onClick={handleEnableNotifications}
+                  className="h-auto p-0 mt-1 text-[11px] gap-1.5"
+                >
+                  <BellRing className="w-3 h-3" />
+                  Enable round notifications
+                </Button>
+              )}
+              {notificationPermission === 'granted' && (
+                <p className="mt-1 text-[11px]">
+                  Round and rest notifications are on for this device.
                 </p>
-                {notificationPermission === 'default' && (
-                  <Button
-                    variant="link"
-                    size="sm"
-                    onClick={handleEnableNotifications}
-                    className="h-auto p-0 mt-1 text-[11px] gap-1.5"
-                  >
-                    <BellRing className="w-3 h-3" />
-                    Enable round notifications
-                  </Button>
-                )}
-                {notificationPermission === 'granted' && (
-                  <p className="mt-1 text-[11px]">
-                    Round and rest notifications are on for this device.
-                  </p>
-                )}
-              </div>
+              )}
             </div>
-          </Card>
+          </div>
+        </Card>
 
-          {/* Sidebar: Settings + Presets */}
-          <div className="flex flex-col gap-6">
-            {/* Settings */}
+        {/* Sidebar: Settings (640 px and up) + Presets */}
+        <div className="flex flex-col gap-6">
+          {!isMobile && (
             <Card className="p-5 bg-card/60 backdrop-blur shadow-md">
               <div className="flex items-center gap-2 mb-4">
                 <Settings2 className="w-4 h-4 text-primary" />
                 <h2 className="font-display font-semibold tracking-tight">Settings</h2>
               </div>
-
-              <div className="space-y-4">
-                <NumberStepper
-                  label="Rounds"
-                  value={totalRounds}
-                  min={1}
-                  max={99}
-                  onChange={(v) => setTotalRounds(clamp(v, 1, 99))}
-                  disabled={isActive}
-                />
-
-                <DurationField
-                  label="Round duration"
-                  minutes={roundMinutes}
-                  seconds={roundSeconds}
-                  onChange={(m, s) => {
-                    setRoundMinutes(clamp(m, 0, 59))
-                    setRoundSeconds(clamp(s, 0, 59))
-                  }}
-                  disabled={isActive}
-                  icon={<Bell className="w-3.5 h-3.5 text-primary" />}
-                />
-
-                <DurationField
-                  label="Rest duration"
-                  minutes={restMinutes}
-                  seconds={restSecondsField}
-                  onChange={(m, s) => {
-                    setRestMinutes(clamp(m, 0, 59))
-                    setRestSecondsField(clamp(s, 0, 59))
-                  }}
-                  disabled={isActive}
-                  icon={<Coffee className={`w-3.5 h-3.5 ${REST_ICON_CLASS}`} />}
-                />
-
-                <NumberStepper
-                  label="Prep countdown (sec)"
-                  value={prepSeconds}
-                  min={0}
-                  max={60}
-                  onChange={(v) => setPrepSeconds(clamp(v, 0, 60))}
-                  disabled={isActive}
-                />
-
-                <div className="pt-2 text-xs text-muted-foreground flex items-center justify-between">
-                  <span>Total time</span>
-                  <span className="font-mono">
-                    {formatSeconds(
-                      Math.max(0, prepSeconds ?? 0) +
-                        totalRounds * roundTotal +
-                        Math.max(0, totalRounds - 1) * restTotal
-                    )}
-                  </span>
-                </div>
-              </div>
+              {settingsFields}
             </Card>
+          )}
 
-            {/* Presets */}
-            <Card className="p-5 bg-card/60 backdrop-blur shadow-md">
-              <div className="flex items-center gap-2 mb-4">
-                <ListChecks className="w-4 h-4 text-primary" />
-                <h2 className="font-display font-semibold tracking-tight">Presets</h2>
-              </div>
+          {/* Presets */}
+          <Card className="p-5 bg-card/60 backdrop-blur shadow-md">
+            <div className="flex items-center gap-2 mb-4">
+              <ListChecks className="w-4 h-4 text-primary" />
+              <h2 className="font-display font-semibold tracking-tight">Presets</h2>
+            </div>
 
-              <div className="flex items-center gap-2 mb-4">
-                <Input
-                  value={presetName}
-                  onChange={(e) => setPresetName(e.target.value ?? '')}
-                  placeholder="Name this workout…"
-                  className="h-9"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') handleSavePreset()
-                  }}
-                />
-                <Button size="sm" onClick={handleSavePreset} className="gap-1.5">
-                  <Save className="w-3.5 h-3.5" />
-                  Save
-                </Button>
-              </div>
+            <div className="flex items-center gap-2 mb-4">
+              <Input
+                value={presetName}
+                onChange={(e) => setPresetName(e.target.value ?? '')}
+                placeholder="Name this workout…"
+                aria-label="Preset name"
+                className="h-10"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') handleSavePreset()
+                }}
+              />
+              <Button onClick={handleSavePreset} className="gap-1.5" aria-label="Save preset">
+                <Save className="w-3.5 h-3.5" />
+                Save
+              </Button>
+            </div>
 
-              <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1">
-                <AnimatePresence initial={false}>
-                  {(presets ?? []).length === 0 ? (
-                    <p className="text-xs text-muted-foreground text-center py-6">
-                      No presets saved yet.
-                    </p>
-                  ) : (
-                    (presets ?? []).map((p) => {
-                      const isActiveP = activePresetId === p?.id
-                      return (
-                        <motion.div
-                          key={p?.id}
-                          initial={{ opacity: 0, y: 6 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -6 }}
-                          transition={{ duration: 0.2 }}
-                          className={`group flex items-center justify-between gap-2 rounded-lg px-3 py-2.5 transition-colors ${
-                            isActiveP
-                              ? 'bg-primary/10 ring-1 ring-primary/30'
-                              : 'bg-foreground/[0.03] hover:bg-foreground/[0.06]'
-                          }`}
+            <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1">
+              <AnimatePresence initial={false}>
+                {(presets ?? []).length === 0 ? (
+                  <p className="text-xs text-muted-foreground text-center py-6">
+                    No presets saved yet.
+                  </p>
+                ) : (
+                  (presets ?? []).map((p) => {
+                    const isActiveP = activePresetId === p?.id
+                    return (
+                      <motion.div
+                        key={p?.id}
+                        initial={{ opacity: 0, y: motionOffset(6, reducedMotion) }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: motionOffset(-6, reducedMotion) }}
+                        transition={{ duration: motionDurationSeconds(0.2, reducedMotion) }}
+                        className={`group flex items-center justify-between gap-2 rounded-lg px-3 py-2 transition-colors motion-reduce:transition-none ${
+                          isActiveP
+                            ? 'bg-primary/10 ring-1 ring-primary/30'
+                            : 'bg-foreground/[0.03] hover:bg-foreground/[0.06]'
+                        }`}
+                      >
+                        <button
+                          onClick={() => handleLoadPreset(p)}
+                          aria-label={`Load ${p?.name ?? 'Untitled'}`}
+                          className={`flex-1 min-w-0 rounded-md px-1 py-1.5 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background ${TOUCH_TARGET_CLASS}`}
                         >
-                          <button
-                            onClick={() => handleLoadPreset(p)}
-                            className="flex-1 text-left min-w-0"
-                          >
-                            <div className="flex items-center gap-1.5 min-w-0">
-                              {isActiveP && <Check className="w-3.5 h-3.5 text-primary flex-shrink-0" />}
-                              <span className="text-sm font-medium truncate">{p?.name ?? 'Untitled'}</span>
-                              <span className="ml-auto flex-shrink-0 rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
-                                {workoutTypeLabel(p?.type)}
-                              </span>
-                            </div>
-                            <div className="mt-0.5 text-[11px] text-muted-foreground font-mono">
-                              {p?.rounds ?? 0} × {formatSeconds(p?.roundSeconds ?? 0)}
-                              <span className="mx-1.5 opacity-50">·</span>
-                              rest {formatSeconds(p?.restSeconds ?? 0)}
-                            </div>
-                          </button>
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity"
-                            onClick={() => handleDeletePreset(p?.id ?? '')}
-                            aria-label="Delete preset"
-                          >
-                            <Trash2 className="w-3.5 h-3.5 text-destructive" />
-                          </Button>
-                        </motion.div>
-                      )
-                    })
-                  )}
-                </AnimatePresence>
-              </div>
-            </Card>
-          </div>
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            {isActiveP && <Check className="w-3.5 h-3.5 text-primary flex-shrink-0" />}
+                            <span className="text-sm font-medium truncate">{p?.name ?? 'Untitled'}</span>
+                            <span className="ml-auto flex-shrink-0 rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                              {workoutTypeLabel(p?.type)}
+                            </span>
+                          </div>
+                          <div className="mt-0.5 text-[11px] text-muted-foreground font-mono tabular-nums">
+                            {p?.rounds ?? 0} × {formatSeconds(p?.roundSeconds ?? 0)}
+                            <span className="mx-1.5 opacity-50">·</span>
+                            rest {formatSeconds(p?.restSeconds ?? 0)}
+                          </div>
+                        </button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-10 w-10 flex-shrink-0 opacity-60 transition-opacity focus-visible:opacity-100 group-hover:opacity-100 motion-reduce:transition-none"
+                          onClick={() => handleDeletePreset(p?.id ?? '')}
+                          aria-label={`Delete ${p?.name ?? 'preset'}`}
+                        >
+                          <Trash2 className="w-3.5 h-3.5 text-destructive" />
+                        </Button>
+                      </motion.div>
+                    )
+                  })
+                )}
+              </AnimatePresence>
+            </div>
+          </Card>
         </div>
-
-        <footer className="mt-12 text-center text-xs text-muted-foreground">
-          <p>Tip: audio unlocks after you press Start. The countdown stays accurate even if you switch apps.</p>
-        </footer>
-      </main>
-    </div>
+      </div>
+    </>
   )
 }

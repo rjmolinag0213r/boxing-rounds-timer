@@ -1,5 +1,5 @@
-import BoxingTimer from './_components/boxing-timer'
+import BoxingApp from './_components/boxing-app'
 
 export default function Page() {
-  return <BoxingTimer />
+  return <BoxingApp />
 }

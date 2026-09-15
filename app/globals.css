@@ -134,6 +134,32 @@
   ::-webkit-scrollbar-thumb:hover { background-color: hsl(var(--muted-foreground) / 0.5); }
 }
 
+@layer base {
+  /*
+   * Requirement 10.7: where the user agent asks for reduced motion, every CSS transition and
+   * keyframe animation is capped at 10 ms — short enough to be imperceptible, but still a
+   * completed transition rather than a removed one, so `transitionend` listeners keep firing.
+   * framer-motion durations are JavaScript values this query cannot reach; they are capped by
+   * `lib/ui/motion.ts` instead.
+   */
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+      transition-duration: 10ms !important;
+      transition-delay: 0ms !important;
+      animation-duration: 10ms !important;
+      animation-delay: 0ms !important;
+      animation-iteration-count: 1 !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
 @layer utilities {
   /* Hide scrollbar */
   .scrollbar-none::-webkit-scrollbar { display: none; }

@@ -13,14 +13,21 @@
  * `text-destructive`, `ring-primary/30`), so the theme stays defined in `app/globals.css`
  * (requirement 10.10).
  *
- * The component is self-contained: it reads and writes the saved-workout list itself and
- * reports each save through `onSaved` so a host view can refresh alongside it. Task 12.1 gives
- * it a tab of its own.
+ * Persistence goes through `lib/data/workoutLibrary.ts` — the *shared* workout store — rather
+ * than through `savePresets` directly. That matters now that the builder and the timer are two
+ * tabs of one page: each used to hold its own copy of the list and write it back whole, so
+ * whichever saved last silently discarded the other's workouts. Routing through the library
+ * also makes a save local-first and mirrored to the signed-in account (requirements 8.1, 8.2),
+ * which the direct `savePresets` call bypassed entirely. `onSaved` still reports each save so
+ * the host can react (it switches to the Timer tab).
  *
- * Requirements: 5.1, 5.2, 5.5, 5.6, 5.7, 10.10
+ * Every interactive control carries a visible label or an `aria-label`, and the focus ring on
+ * each resolves from `--ring` (requirements 10.6, 10.8).
+ *
+ * Requirements: 5.1, 5.2, 5.5, 5.6, 5.7, 10.6, 10.8, 10.10
  */
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { Bell, Coffee, Dumbbell, Hammer, Save, Sparkles } from 'lucide-react'
 import { toast } from 'sonner'
 
@@ -35,13 +42,12 @@ import {
   validateWorkoutDraft,
   type WorkoutIssueField,
 } from '@/lib/data/workoutSchemas'
+import { useWorkoutLibrary } from '@/lib/data/workoutLibrary'
 import {
   DEFAULT_PREP_SECONDS,
   DEFAULT_PRESETS,
   formatSeconds,
   generateId,
-  loadPresets,
-  savePresets,
   workoutTypeLabel,
   type Preset,
   type WorkoutType,
@@ -79,13 +85,8 @@ export default function WorkoutBuilder({ onSaved }: WorkoutBuilderProps) {
   /** The per-field validation messages from the last rejected submission. */
   const [errors, setErrors] = useState<Partial<Record<WorkoutIssueField, string>>>({})
 
-  /** The saved list, seeded with the defaults exactly as the timer view seeds it. */
-  const [workouts, setWorkouts] = useState<Preset[]>([])
-
-  useEffect(() => {
-    const saved = loadPresets()
-    setWorkouts(saved.length > 0 ? saved : DEFAULT_PRESETS)
-  }, [])
+  /** The shared saved-workout list — the same one the timer panel reads. */
+  const { saveWorkout } = useWorkoutLibrary()
 
   const roundSeconds = useMemo(
     () => (roundMinutes ?? 0) * 60 + (roundSecondsField ?? 0),
@@ -162,15 +163,14 @@ export default function WorkoutBuilder({ onSaved }: WorkoutBuilderProps) {
       createdAt: Date.now(),
     }
 
-    const next = [...workouts, workout]
-    setWorkouts(next)
-    savePresets(next)
+    // The shared library persists it and publishes it to every mounted view at once.
+    void saveWorkout(workout)
     setErrors({})
     setName('')
-    // Requirement 5.6: a success confirmation follows the persisted workout.
+    // Requirements 5.6, 10.11: a transient toast confirms the persisted workout.
     toast.success(`Saved “${workout.name}”`)
     onSaved?.(workout)
-  }, [name, type, rounds, roundSeconds, restSeconds, prepSeconds, workouts, onSaved])
+  }, [name, type, rounds, roundSeconds, restSeconds, prepSeconds, saveWorkout, onSaved])
 
   /** A validation message rendered beneath its own input. */
   const fieldError = (field: WorkoutIssueField) =>
@@ -234,7 +234,8 @@ export default function WorkoutBuilder({ onSaved }: WorkoutBuilderProps) {
                 <button
                   type="button"
                   onClick={() => handleUseStartingPoint(preset)}
-                  className="w-full rounded-lg bg-foreground/[0.03] px-3 py-2.5 text-left transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary/30"
+                  aria-label={`Use ${preset.name} as a starting point`}
+                  className="w-full min-h-[44px] rounded-lg bg-foreground/[0.03] px-3 py-2.5 text-left transition-colors hover:bg-primary/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background motion-reduce:transition-none"
                 >
                   <div className="flex items-center gap-2 min-w-0">
                     <span className="text-sm font-medium truncate">{preset.name}</span>

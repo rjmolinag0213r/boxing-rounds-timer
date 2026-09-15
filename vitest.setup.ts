@@ -46,3 +46,20 @@ if (typeof globalThis.IntersectionObserver === 'undefined') {
   globalThis.IntersectionObserver =
     TestIntersectionObserver as unknown as typeof IntersectionObserver
 }
+
+
+/**
+ * jsdom implements no `ResizeObserver` either, and the Radix primitives that measure their
+ * trigger before positioning a popper (`Dialog`, `Select`, `Popover`) construct one. Reporting
+ * a zero-sized box is enough: the tests assert on structure and accessible names, never on
+ * layout geometry, which jsdom could not compute anyway.
+ */
+if (typeof globalThis.ResizeObserver === 'undefined') {
+  class TestResizeObserver implements ResizeObserver {
+    observe(): void {}
+    unobserve(): void {}
+    disconnect(): void {}
+  }
+
+  globalThis.ResizeObserver = TestResizeObserver as unknown as typeof ResizeObserver
+}

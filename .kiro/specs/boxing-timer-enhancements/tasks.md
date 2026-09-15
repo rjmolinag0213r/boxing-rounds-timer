@@ -382,14 +382,14 @@ unit and integration tests.
       sign-out return to local-only, pending-record retry, and the 503 fallback indicator
     - _Requirements: 6.7, 8.1, 8.2, 8.3, 8.4, 8.10, 8.11_
 
-- [ ] 11. Build the history view
-  - [-] 11.1 Implement history aggregates and duration formatting
+- [x] 11. Build the history view
+  - [x] 11.1 Implement history aggregates and duration formatting
     - Create `lib/data/historyAggregates.ts` computing exact current-calendar-week sums of session
       count, completed rounds, and total durations over sessions whose end timestamps fall in the week
     - Format durations as `mm:ss` or `h:mm:ss`
     - _Requirements: 7.2, 7.3, 7.4_
 
-  - [~] 11.2 Create the history view component
+  - [x] 11.2 Create the history view component
     - Create `app/_components/history-view.tsx` listing sessions ordered by end timestamp,
       newest first
     - Per row show end date, a type badge, completed/planned rounds, formatted duration, the stored
@@ -400,12 +400,12 @@ unit and integration tests.
     - Express all colors through tokens and give every control an accessible name
     - _Requirements: 6.6, 7.1, 7.2, 7.3, 7.5, 7.6, 7.7, 10.8, 10.10_
 
-  - [ ]* 11.3 Write unit tests for the aggregates
+  - [x]* 11.3 Write unit tests for the aggregates
     - Cover week boundary inclusion/exclusion, empty input, and both duration formats
     - _Requirements: 7.3, 7.4_
 
 - [ ] 12. Add navigation, mobile layout, and accessibility
-  - [~] 12.1 Add top-level tab navigation
+  - [-] 12.1 Add top-level tab navigation
     - Add `Tabs` with Timer, Builder, and History triggers rendering the corresponding panel, with
       the active trigger styled from `--primary`
     - Open sound settings from the header as a `Dialog` (desktop) or `Drawer` (mobile)
