@@ -45,14 +45,14 @@ unit and integration tests.
     - _Requirements: 1.2, 13.3_
 
 - [ ] 2. Build the wall-clock timer engine (the background-drift bug fix)
-  - [-] 2.1 Create the timer domain types
+  - [x] 2.1 Create the timer domain types
     - Create `lib/timer/types.ts` exporting `Phase`, `WorkoutSpec`, `Segment`, `TimelinePlan`,
       `EngineState` (with `status: 'idle' | 'running' | 'paused' | 'finished'`, `startedAtMs`,
       `pausedAtMs`, `accumulatedPauseMs`), and `TimerSnapshot`
     - Represent `paused` as a status distinct from `idle`, `running`, and `finished`
     - _Requirements: 1.8, 2.1_
 
-  - [~] 2.2 Implement `buildPlan` with spec validation
+  - [-] 2.2 Implement `buildPlan` with spec validation
     - Create `lib/timer/plan.ts` with `buildPlan(spec): TimelinePlan`
     - Emit exactly one `prep` segment at position 0 when `prepSeconds > 0` and none when it is 0
     - Emit exactly `rounds` segments of kind `round`, and `rounds - 1` segments of kind `rest`
