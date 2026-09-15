@@ -4,8 +4,9 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
-    "start": "next start",
-    "lint": "next lint"
+    "start": "next start -p ${PORT:-3000}",
+    "lint": "next lint",
+    "migrate:deploy": "if [ -d prisma/migrations ]; then prisma migrate deploy; else echo \"No prisma/migrations yet - skipping migrate deploy\"; fi"
   },
   "prisma": {
     "seed": "tsx --require dotenv/config scripts/safe-seed.ts"
