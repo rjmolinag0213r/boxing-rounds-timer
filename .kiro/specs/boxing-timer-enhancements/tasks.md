@@ -33,8 +33,8 @@ unit and integration tests.
 
 ## Tasks
 
-- [ ] 1. Set up the test toolchain
-  - [ ] 1.1 Install and configure vitest and fast-check
+- [x] 1. Set up the test toolchain
+  - [x] 1.1 Install and configure vitest and fast-check
     - Add dev dependencies: `vitest`, `fast-check`, `@vitejs/plugin-react`, `jsdom`,
       `@testing-library/react`, `@testing-library/jest-dom`
     - Create `vitest.config.ts` with the `@/*` path alias matching `tsconfig.json`, `jsdom`
@@ -45,14 +45,14 @@ unit and integration tests.
     - _Requirements: 1.2, 13.3_
 
 - [ ] 2. Build the wall-clock timer engine (the background-drift bug fix)
-  - [ ] 2.1 Create the timer domain types
+  - [-] 2.1 Create the timer domain types
     - Create `lib/timer/types.ts` exporting `Phase`, `WorkoutSpec`, `Segment`, `TimelinePlan`,
       `EngineState` (with `status: 'idle' | 'running' | 'paused' | 'finished'`, `startedAtMs`,
       `pausedAtMs`, `accumulatedPauseMs`), and `TimerSnapshot`
     - Represent `paused` as a status distinct from `idle`, `running`, and `finished`
     - _Requirements: 1.8, 2.1_
 
-  - [ ] 2.2 Implement `buildPlan` with spec validation
+  - [~] 2.2 Implement `buildPlan` with spec validation
     - Create `lib/timer/plan.ts` with `buildPlan(spec): TimelinePlan`
     - Emit exactly one `prep` segment at position 0 when `prepSeconds > 0` and none when it is 0
     - Emit exactly `rounds` segments of kind `round`, and `rounds - 1` segments of kind `rest`
@@ -68,7 +68,7 @@ unit and integration tests.
     - Generator: arbitrary valid `WorkoutSpec` (rounds 1–99, round 1–3600 s, rest 0–600 s,
       prep 0–60 s)
 
-  - [ ] 2.4 Implement the pure elapsed/segment/snapshot computation
+  - [~] 2.4 Implement the pure elapsed/segment/snapshot computation
     - Create `lib/timer/compute.ts` with `effectiveElapsedMs`, `segmentAt`, and `snapshot`
     - Derive remaining time from `segment end boundary − supplied timestamp`, never from a
       decremented counter; compute every snapshot purely from `(EngineState, nowMs)`
@@ -110,7 +110,7 @@ unit and integration tests.
     - Assert the validation error names the offending field for out-of-bounds specs
     - _Requirements: 2.3, 2.5, 2.11_
 
-  - [ ] 2.12 Implement the React binding and visibility reconciler
+  - [~] 2.12 Implement the React binding and visibility reconciler
     - Create `lib/timer/useTimerEngine.ts` as a `useReducer` over `EngineState` plus a driver effect
     - Run the driver at 250 ms while the document is visible so the display refreshes at least
       once every 250 ms
@@ -130,18 +130,18 @@ unit and integration tests.
       single reconciliation, correct phase, and reconciliation latency under 250 ms
     - _Requirements: 1.5, 2.12_
 
-- [ ] 3. Checkpoint - timer engine correctness
+- [~] 3. Checkpoint - timer engine correctness
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 4. Refactor the timer view onto the engine
-  - [ ] 4.1 Replace the `setInterval` countdown with `useTimerEngine`
+  - [~] 4.1 Replace the `setInterval` countdown with `useTimerEngine`
     - Delete the `setInterval` tick loop, the `remaining` state, the `running` flag, and the
       `useEffect` watching `remaining <= 0` from `app/_components/boxing-timer.tsx`
     - Derive every displayed timing value (countdown, phase label, round number, progress ring)
       from the `TimerSnapshot`, holding no independent countdown state
     - _Requirements: 1.11, 1.12, 2.12_
 
-  - [ ] 4.2 Wire alerts and the background-audio notice
+  - [~] 4.2 Wire alerts and the background-audio notice
     - Play the existing `lib/audio.ts` synth tones from the engine's emitted sound events, unlocking
       and resuming the AudioContext inside the Start user-gesture handler
     - Play the warning tick once per remaining whole second during the final 3 seconds of a `round`
@@ -157,7 +157,7 @@ unit and integration tests.
     - _Requirements: 1.5, 1.6, 1.11_
 
 - [ ] 5. Apply the red-and-white theme
-  - [ ] 5.1 Retint the design tokens in `app/globals.css`
+  - [~] 5.1 Retint the design tokens in `app/globals.css`
     - Replace the purple `--primary` (`262 83% 58%` / `263 70% 50%`) with boxing red
       (`0 84% 55%` light / `0 72% 51%` dark) and set `--ring` to the same value in both blocks
     - Retint `--secondary`, `--muted`, `--accent`, `--accent-foreground`, `--border`, `--input`, and
@@ -169,7 +169,7 @@ unit and integration tests.
       unchanged
     - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5, 9.6, 9.9, 9.13_
 
-  - [ ] 5.2 Migrate hardcoded red utilities to semantic tokens
+  - [~] 5.2 Migrate hardcoded red utilities to semantic tokens
     - Replace all 12 `red-500`/`red-600` occurrences in `app/_components/boxing-timer.tsx` with
       `text-primary`, `stroke-primary`, `bg-primary/10`, `ring-primary/30`, and `from-primary/10`
     - Render Start/Resume as the stock `Button` default variant, dropping the custom
@@ -188,14 +188,14 @@ unit and integration tests.
     - _Requirements: 9.7, 9.13_
 
 - [ ] 6. Evolve the preset model for Boxing and MMA
-  - [ ] 6.1 Extend the `Preset` type and default workouts
+  - [~] 6.1 Extend the `Preset` type and default workouts
     - Add `type: WorkoutType` (`'BOXING' | 'MMA' | 'CUSTOM'`) and optional `prepSeconds` to the
       `Preset` interface in `lib/presets.ts`
     - Define the three typed Boxing defaults (Classic 12×3 / Amateur 3×2 / Speed 10×1, prep 5 s)
       and the two MMA defaults (Championship 5×5 and Regular 3×5, 300 s rounds, 60 s rest, prep 10 s)
     - _Requirements: 5.3, 5.4_
 
-  - [ ] 6.2 Implement the v1 → v2 storage migration
+  - [~] 6.2 Implement the v1 → v2 storage migration
     - On load, migrate records under `boxing_timer_presets_v1` to `boxing_timer_presets_v2`,
       assigning type `BOXING` and prep 5 s while preserving `id`, `name`, `rounds`, `roundSeconds`,
       `restSeconds`, and `createdAt`
@@ -210,13 +210,13 @@ unit and integration tests.
     - _Requirements: 5.10, 5.11, 5.12_
 
 - [ ] 7. Build the custom workout builder
-  - [ ] 7.1 Implement workout validation schemas
+  - [~] 7.1 Implement workout validation schemas
     - Create `lib/data/workoutSchemas.ts` with zod schemas enforcing name length 1–60, rounds 1–99,
       round duration 1–3600 s, rest duration 0–600 s, and prep duration 0–60 s
     - Return per-field error messages that identify the offending field
     - _Requirements: 5.6, 5.7_
 
-  - [ ] 7.2 Create the workout builder component
+  - [~] 7.2 Create the workout builder component
     - Create `app/_components/workout-builder.tsx` with a `BOXING`/`MMA`/`CUSTOM` type selector and
       editable name, rounds, round duration, rest duration, and prep duration inputs
     - List the default workouts of the selected type as starting points
@@ -226,7 +226,7 @@ unit and integration tests.
       colors expressed through theme tokens
     - _Requirements: 5.1, 5.2, 5.5, 5.6, 5.7, 10.10_
 
-  - [ ] 7.3 Wire workout selection and deletion into the timer view
+  - [~] 7.3 Wire workout selection and deletion into the timer view
     - Load a selected workout's rounds, round duration, rest duration, and prep duration into the
       active `WorkoutSpec` while the engine status is `idle`
     - Delete a saved workout without removing any existing session record
@@ -237,14 +237,14 @@ unit and integration tests.
     - _Requirements: 5.6, 5.7_
 
 - [ ] 8. Build the configurable sound engine
-  - [ ] 8.1 Define sound types and keep the synth tones as fallback
+  - [~] 8.1 Define sound types and keep the synth tones as fallback
     - Create `lib/audio/types.ts` with `SoundRole` (`roundStart`, `restStart`, `warningTick`,
       `finished`), `SoundSource` (`synth` / `builtin` / `custom`), and `SoundSettings`
     - Keep `playRoundStartBell`, `playRestStartBuzzer`, and `playWarningTick` in `lib/audio.ts` as
       the default and fallback tones, adding the `finished` synth tone
     - _Requirements: 3.1, 3.7_
 
-  - [ ] 8.2 Implement the custom sound store and upload validation
+  - [~] 8.2 Implement the custom sound store and upload validation
     - Create `lib/audio/customStore.ts` persisting validated uploads as IndexedDB blobs keyed by a
       generated `blobId`
     - Accept only `audio/*` MIME, size ≤ 5 MB, and decoded duration ≤ 10 s; on any failure report
@@ -252,7 +252,7 @@ unit and integration tests.
     - Support deleting a stored blob and enumerating stored blobs for selection
     - _Requirements: 3.4, 3.5_
 
-  - [ ] 8.3 Implement the sound engine
+  - [~] 8.3 Implement the sound engine
     - Create `lib/audio/soundEngine.ts` implementing `unlock`, `play`, `scheduleAt`,
       `cancelScheduled`, `setSettings`, and `loadCustom`
     - Pre-schedule each active segment's boundary sound and its warning ticks against the
@@ -265,14 +265,14 @@ unit and integration tests.
     - Cache decoded `AudioBuffer`s in memory per session
     - _Requirements: 3.3, 3.6, 3.7, 3.8, 3.9, 3.11, 4.2, 4.4, 4.5_
 
-  - [ ] 8.4 Add the built-in sound registry
+  - [~] 8.4 Add the built-in sound registry
     - Create `lib/audio/builtins.ts` listing the bundled `public/sounds/*.mp3` asset paths
       (boxing bell, air horn, buzzer, beep) with display names
     - Add `public/sounds/README.md` recording royalty-free attribution for each asset
     - Degrade to the synth fallback when a registered asset is missing from the deployment
     - _Requirements: 3.2, 3.7_
 
-  - [ ] 8.5 Create the sound settings component
+  - [~] 8.5 Create the sound settings component
     - Create `app/_components/sound-settings.tsx` presenting, per role, a selection control listing
       every synth tone, every bundled asset, and every stored custom file
     - Add per-role preview playing the assigned source once at the configured volume, a volume
@@ -281,7 +281,7 @@ unit and integration tests.
     - Give every interactive control an accessible name and express all colors through tokens
     - _Requirements: 3.2, 3.5, 3.10, 4.8, 10.8, 10.10_
 
-  - [ ] 8.6 Replace direct audio calls in the timer view with the sound engine
+  - [~] 8.6 Replace direct audio calls in the timer view with the sound engine
     - Route the engine's sound events through `SoundEngine`, unlocking and resuming the
       AudioContext inside the Start gesture and pre-scheduling each segment's boundaries on entry
     - Reschedule future boundaries on visibility resume
@@ -293,18 +293,18 @@ unit and integration tests.
       reassignment when a custom blob is deleted
     - _Requirements: 3.4, 3.5, 3.6, 3.7, 3.8, 3.9, 3.11_
 
-- [ ] 9. Checkpoint - engine, theme, builder, and sound
+- [~] 9. Checkpoint - engine, theme, builder, and sound
   - Ensure all tests pass, ask the user if questions arise.
 
 - [ ] 10. Add persistence, API routes, and the hybrid repository
-  - [ ] 10.1 Add the Prisma models
+  - [~] 10.1 Add the Prisma models
     - Add `User`, `Account`, `Session`, `VerificationToken`, the `WorkoutType` enum, `Workout`, and
       `WorkoutSession` to `prisma/schema.prisma`, keeping the existing datasource and generator
     - Include `@@index([userId])` on `Workout` and `@@index([userId, endedAt])` on `WorkoutSession`,
       and the denormalized `workoutName`/`type` snapshot fields
     - _Requirements: 12.1_
 
-  - [ ] 10.2 Generate the initial migration and confirm the deployment scripts
+  - [~] 10.2 Generate the initial migration and confirm the deployment scripts
     - Generate the committed migration under `prisma/migrations/` defining all six models
     - Confirm `build` runs `prisma generate` before `next build`, `start` binds to `$PORT`,
       `migrate:deploy` runs `prisma migrate deploy`, `engines.node` pins major version 20, and
@@ -314,7 +314,7 @@ unit and integration tests.
     - Deterministic config assertions only; no deployment is performed by this task
     - _Requirements: 12.1, 12.2, 12.3, 12.4, 12.5, 12.6, 12.7, 12.8_
 
-  - [ ] 10.3 Define shared DTOs and API validation schemas
+  - [~] 10.3 Define shared DTOs and API validation schemas
     - Repurpose `lib/types.ts` to export only timer-domain types: `WorkoutType`, `WorkoutDTO`, and
       `WorkoutSessionDTO`
     - Add zod request schemas enforcing `rounds >= 1`, `roundSeconds >= 1`, `restSeconds >= 0`,
@@ -322,7 +322,7 @@ unit and integration tests.
       non-empty name of length ≤ 60
     - _Requirements: 6.5, 8.8, 13.1_
 
-  - [ ] 10.4 Add the auth route handler and session helper
+  - [~] 10.4 Add the auth route handler and session helper
     - Create `app/api/auth/[...nextauth]/route.ts` using the existing `next-auth` and
       `@next-auth/prisma-adapter` dependencies
     - Add a server helper resolving the optional authenticated `userId` for route handlers
@@ -330,27 +330,27 @@ unit and integration tests.
       successfully in local-only mode when `DATABASE_URL` is absent
     - _Requirements: 8.6, 8.7, 12.9, 12.10_
 
-  - [ ] 10.5 Implement the workouts API
+  - [~] 10.5 Implement the workouts API
     - Create `app/api/workouts/route.ts` (GET/POST) and `app/api/workouts/[id]/route.ts` (DELETE)
     - Upsert by client-generated identifier so repeated sends store exactly one row
     - Scope every read and write to the authenticated `userId`; respond 401 without a session,
       400 with each invalid field named, and 503 when `DATABASE_URL` is unset or unreachable
     - _Requirements: 8.5, 8.6, 8.7, 8.8, 8.9_
 
-  - [ ] 10.6 Implement the sessions API
+  - [~] 10.6 Implement the sessions API
     - Create `app/api/sessions/route.ts` (GET/POST) with the same upsert, `userId` scoping, and
       401/400/503 behavior
     - Reject records whose completed round count falls outside `[0, roundsPlanned]` or whose total
       duration is negative, returning the validation error to the caller
     - _Requirements: 6.1, 6.5, 8.5, 8.6, 8.7, 8.8, 8.9_
 
-  - [ ] 10.7 Add the readiness healthcheck endpoint
+  - [~] 10.7 Add the readiness healthcheck endpoint
     - Create `app/api/health/route.ts` returning HTTP 200 when the server is ready to serve, without
       requiring a database connection
     - Point `railway.json` `healthcheckPath` at it
     - _Requirements: 12.11_
 
-  - [ ] 10.8 Implement the hybrid workout repository
+  - [~] 10.8 Implement the hybrid workout repository
     - Create `lib/data/workoutRepository.ts` with the `WorkoutRepository` interface and
       `LocalWorkoutRepository` (localStorage workouts + IndexedDB sessions),
       `RemoteWorkoutRepository` (`/api/workouts`, `/api/sessions`), and `SyncingRepository`
@@ -368,7 +368,7 @@ unit and integration tests.
       asserting `userId` scoping, idempotent upsert, 401, 400 field naming, and 503 handling
     - _Requirements: 8.5, 8.6, 8.7, 8.8, 8.9_
 
-  - [ ] 10.10 Record sessions from the timer view
+  - [~] 10.10 Record sessions from the timer view
     - On reaching `finished`, record a session with workout name, type, planned rounds, completed
       rounds, total duration, completed = true, and the start and end timestamps
     - On stop before finishing, record completed = false with a completed round count equal to the
@@ -383,13 +383,13 @@ unit and integration tests.
     - _Requirements: 6.7, 8.1, 8.2, 8.3, 8.4, 8.10, 8.11_
 
 - [ ] 11. Build the history view
-  - [ ] 11.1 Implement history aggregates and duration formatting
+  - [~] 11.1 Implement history aggregates and duration formatting
     - Create `lib/data/historyAggregates.ts` computing exact current-calendar-week sums of session
       count, completed rounds, and total durations over sessions whose end timestamps fall in the week
     - Format durations as `mm:ss` or `h:mm:ss`
     - _Requirements: 7.2, 7.3, 7.4_
 
-  - [ ] 11.2 Create the history view component
+  - [~] 11.2 Create the history view component
     - Create `app/_components/history-view.tsx` listing sessions ordered by end timestamp,
       newest first
     - Per row show end date, a type badge, completed/planned rounds, formatted duration, the stored
@@ -405,13 +405,13 @@ unit and integration tests.
     - _Requirements: 7.3, 7.4_
 
 - [ ] 12. Add navigation, mobile layout, and accessibility
-  - [ ] 12.1 Add top-level tab navigation
+  - [~] 12.1 Add top-level tab navigation
     - Add `Tabs` with Timer, Builder, and History triggers rendering the corresponding panel, with
       the active trigger styled from `--primary`
     - Open sound settings from the header as a `Dialog` (desktop) or `Drawer` (mobile)
     - _Requirements: 10.1, 10.2_
 
-  - [ ] 12.2 Apply the mobile-first layout
+  - [~] 12.2 Apply the mobile-first layout
     - Give Start, Pause, and Stop a touch target of at least 44×44 CSS pixels each
     - Below 640 px render the primary action full container width above the secondary controls, and
       present timer settings in a bottom-sheet drawer rather than a side panel
@@ -419,7 +419,7 @@ unit and integration tests.
     - Show a transient toast when a workout completes or a workout is saved
     - _Requirements: 10.3, 10.4, 10.5, 10.9, 10.11_
 
-  - [ ] 12.3 Complete the accessibility pass
+  - [~] 12.3 Complete the accessibility pass
     - Render a visible `--ring`-derived focus indicator on every keyboard-focusable element across
       the timer, builder, history, and sound settings views
     - Under `prefers-reduced-motion: reduce`, omit animated transitions or cap each at 10 ms
@@ -432,20 +432,20 @@ unit and integration tests.
     - _Requirements: 10.3, 10.6, 10.7, 10.8_
 
 - [ ] 13. Ship the installable PWA
-  - [ ] 13.1 Add the web app manifest and icons
+  - [~] 13.1 Add the web app manifest and icons
     - Create `public/manifest.webmanifest` with `name`, `short_name` "Boxing Timer", `start_url` "/",
       `display` "standalone", `orientation` "portrait", `background_color`, a `theme_color` equal to
       the resolved `--primary` red, and 192×192, 512×512, and maskable 512×512 icon entries
     - Add the corresponding icon files under `public/icons/`
     - _Requirements: 11.1, 11.10_
 
-  - [ ] 13.2 Emit the PWA document metadata
+  - [~] 13.2 Emit the PWA document metadata
     - Extend `app/layout.tsx` `metadata`/`viewport` exports to link the manifest and set
       `apple-mobile-web-app-capable`, `apple-mobile-web-app-status-bar-style`, `apple-touch-icon`,
       and `theme-color` so home-screen launches render standalone without browser chrome
     - _Requirements: 11.2, 11.3_
 
-  - [ ] 13.3 Add the service worker and its registration
+  - [~] 13.3 Add the service worker and its registration
     - Create `public/sw.js` caching the app shell and the bundled `public/sounds/` assets on install
       and serving the timer screen from cache when offline
     - Use network-first for `/api/*` and propagate failures to the client so the repository applies
@@ -453,7 +453,7 @@ unit and integration tests.
     - Register from a small client component on mount and activate a new version on next launch
     - _Requirements: 11.4, 11.5, 11.6, 11.7, 11.11_
 
-  - [ ] 13.4 Add the install affordances
+  - [~] 13.4 Add the install affordances
     - Show a custom install control driven by `beforeinstallprompt` where supported
     - On iOS Safari outside standalone mode, show a dismissible Share → "Add to Home Screen" hint
       that appears at most once per browser profile after dismissal
@@ -466,18 +466,18 @@ unit and integration tests.
     - _Requirements: 11.1, 11.6, 11.10_
 
 - [ ] 14. Remove the dead code
-  - [ ] 14.1 Delete the expenses boilerplate
+  - [~] 14.1 Delete the expenses boilerplate
     - Remove `Expense`, `ExpenseFormData`, `EXPENSE_CATEGORIES`, and `DateRange` from `lib/types.ts`,
       leaving only the timer-domain exports added earlier
     - Grep the codebase to confirm zero remaining references to those four identifiers
     - _Requirements: 13.1, 13.2_
 
-  - [ ] 14.2 Verify the typecheck and production build
+  - [~] 14.2 Verify the typecheck and production build
     - Run `npm run typecheck` and `npm run build` and fix any error surfaced by the cleanup so both
       complete with zero errors
     - _Requirements: 13.3_
 
-- [ ] 15. Final checkpoint
+- [~] 15. Final checkpoint
   - Ensure all tests pass, ask the user if questions arise.
 
 ## Notes

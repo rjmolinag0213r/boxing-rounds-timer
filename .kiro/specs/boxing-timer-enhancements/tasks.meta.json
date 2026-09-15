@@ -1,0 +1,328 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1.1 Install and configure vitest and fast-check": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789441303277
+      },
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789441315581
+      },
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789441476432
+      }
+    ],
+    "2.1 Create the timer domain types": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789441303283
+      },
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789441479286
+      }
+    ],
+    "2.2 Implement `buildPlan` with spec validation": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789441303289
+      }
+    ],
+    "2.4 Implement the pure elapsed/segment/snapshot computation": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789441303293
+      }
+    ],
+    "2.12 Implement the React binding and visibility reconciler": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789441303305
+      }
+    ],
+    "3. Checkpoint - timer engine correctness": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789441303309
+      }
+    ],
+    "4.1 Replace the `setInterval` countdown with `useTimerEngine`": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789441303316
+      }
+    ],
+    "4.2 Wire alerts and the background-audio notice": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789441303320
+      }
+    ],
+    "5.1 Retint the design tokens in `app/globals.css`": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789441303323
+      }
+    ],
+    "5.2 Migrate hardcoded red utilities to semantic tokens": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789441303327
+      }
+    ],
+    "6.1 Extend the `Preset` type and default workouts": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789441303330
+      }
+    ],
+    "6.2 Implement the v1 → v2 storage migration": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789441303333
+      }
+    ],
+    "7.1 Implement workout validation schemas": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789441303336
+      }
+    ],
+    "7.2 Create the workout builder component": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789441303340
+      }
+    ],
+    "7.3 Wire workout selection and deletion into the timer view": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789441303343
+      }
+    ],
+    "8.1 Define sound types and keep the synth tones as fallback": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789441303347
+      }
+    ],
+    "8.2 Implement the custom sound store and upload validation": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789441303350
+      }
+    ],
+    "8.3 Implement the sound engine": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789441303355
+      }
+    ],
+    "8.4 Add the built-in sound registry": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789441303361
+      }
+    ],
+    "8.5 Create the sound settings component": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789441303364
+      }
+    ],
+    "8.6 Replace direct audio calls in the timer view with the sound engine": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789441303368
+      }
+    ],
+    "9. Checkpoint - engine, theme, builder, and sound": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789441303372
+      }
+    ],
+    "10.1 Add the Prisma models": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789441303375
+      }
+    ],
+    "10.2 Generate the initial migration and confirm the deployment scripts": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789441303379
+      }
+    ],
+    "10.3 Define shared DTOs and API validation schemas": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789441303383
+      }
+    ],
+    "10.4 Add the auth route handler and session helper": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789441303386
+      }
+    ],
+    "10.5 Implement the workouts API": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789441303390
+      }
+    ],
+    "10.6 Implement the sessions API": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789441303393
+      }
+    ],
+    "10.7 Add the readiness healthcheck endpoint": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789441303397
+      }
+    ],
+    "10.8 Implement the hybrid workout repository": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789441303403
+      }
+    ],
+    "10.10 Record sessions from the timer view": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789441303406
+      }
+    ],
+    "11.1 Implement history aggregates and duration formatting": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789441303410
+      }
+    ],
+    "11.2 Create the history view component": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789441303413
+      }
+    ],
+    "12.1 Add top-level tab navigation": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789441303416
+      }
+    ],
+    "12.2 Apply the mobile-first layout": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789441303420
+      }
+    ],
+    "12.3 Complete the accessibility pass": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789441303423
+      }
+    ],
+    "13.1 Add the web app manifest and icons": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789441303427
+      }
+    ],
+    "13.2 Emit the PWA document metadata": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789441303431
+      }
+    ],
+    "13.3 Add the service worker and its registration": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789441303435
+      }
+    ],
+    "13.4 Add the install affordances": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789441303438
+      }
+    ],
+    "14.1 Delete the expenses boilerplate": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789441303441
+      }
+    ],
+    "14.2 Verify the typecheck and production build": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789441303447
+      }
+    ],
+    "15. Final checkpoint": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789441303451
+      }
+    ],
+    "1. Set up the test toolchain": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789441476435
+      }
+    ]
+  }
+}
