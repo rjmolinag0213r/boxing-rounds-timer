@@ -33,3 +33,7 @@ yarn-error.log*
 *.swp
 *.swo
 *~
+
+# TypeScript incremental build cache
+*.tsbuildinfo
+tsconfig.tsbuildinfo
