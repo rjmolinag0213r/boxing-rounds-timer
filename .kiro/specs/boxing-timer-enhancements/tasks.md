@@ -68,7 +68,7 @@ unit and integration tests.
     - Generator: arbitrary valid `WorkoutSpec` (rounds 1–99, round 1–3600 s, rest 0–600 s,
       prep 0–60 s)
 
-  - [-] 2.4 Implement the pure elapsed/segment/snapshot computation
+  - [x] 2.4 Implement the pure elapsed/segment/snapshot computation
     - Create `lib/timer/compute.ts` with `effectiveElapsedMs`, `segmentAt`, and `snapshot`
     - Derive remaining time from `segment end boundary − supplied timestamp`, never from a
       decremented counter; compute every snapshot purely from `(EngineState, nowMs)`
@@ -77,40 +77,40 @@ unit and integration tests.
     - Return the following segment at an exact boundary; report `finished` at `totalMs`
     - _Requirements: 1.1, 1.2, 1.3, 1.4, 1.7, 1.9, 1.10, 2.7, 2.8, 2.9_
 
-  - [ ]* 2.5 Write property test for elapsed monotonicity
+  - [x]* 2.5 Write property test for elapsed monotonicity
     - **Property 1: Elapsed monotonicity**
     - **Validates: Requirement 1.3**
 
-  - [ ]* 2.6 Write property test for pause behavior
+  - [x]* 2.6 Write property test for pause behavior
     - **Property 2: Pause freezes the clock**
     - **Validates: Requirements 1.4, 1.7, 6.3**
 
-  - [ ]* 2.7 Write property test for background resilience
+  - [x]* 2.7 Write property test for background resilience
     - **Property 3: Background resilience (no drift)**
     - **Validates: Requirements 1.1, 1.2, 1.6**
     - Drive `now` as arbitrary monotonic sequences with injected hidden gaps of arbitrary length;
       assert one large jump yields the same snapshot as many small steps summing to the same delta
 
-  - [ ]* 2.8 Write property test for phase progression
+  - [x]* 2.8 Write property test for phase progression
     - **Property 5: Phase-transition correctness**
     - **Validates: Requirement 2.7**
 
-  - [ ]* 2.9 Write property test for boundary landing
+  - [x]* 2.9 Write property test for boundary landing
     - **Property 6: Boundary landing**
     - **Validates: Requirements 2.8, 2.9**
 
-  - [ ]* 2.10 Write property test for clamp safety
+  - [x]* 2.10 Write property test for clamp safety
     - **Property 7: Clamp safety**
     - **Validates: Requirements 1.9, 1.10**
     - Include `now < startedAt` (early) and `now >> end` (very late resume) generators
 
-  - [ ]* 2.11 Write unit tests for hand-computed engine edge cases
+  - [x]* 2.11 Write unit tests for hand-computed engine edge cases
     - Fixed-input expectations for `restSeconds === 0` (rest skipped), `prepSeconds === 0`
       (no prep segment), and single-round workouts
     - Assert the validation error names the offending field for out-of-bounds specs
     - _Requirements: 2.3, 2.5, 2.11_
 
-  - [~] 2.12 Implement the React binding and visibility reconciler
+  - [-] 2.12 Implement the React binding and visibility reconciler
     - Create `lib/timer/useTimerEngine.ts` as a `useReducer` over `EngineState` plus a driver effect
     - Run the driver at 250 ms while the document is visible so the display refreshes at least
       once every 250 ms
