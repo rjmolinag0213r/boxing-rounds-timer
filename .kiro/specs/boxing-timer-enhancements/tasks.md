@@ -52,7 +52,7 @@ unit and integration tests.
     - Represent `paused` as a status distinct from `idle`, `running`, and `finished`
     - _Requirements: 1.8, 2.1_
 
-  - [-] 2.2 Implement `buildPlan` with spec validation
+  - [x] 2.2 Implement `buildPlan` with spec validation
     - Create `lib/timer/plan.ts` with `buildPlan(spec): TimelinePlan`
     - Emit exactly one `prep` segment at position 0 when `prepSeconds > 0` and none when it is 0
     - Emit exactly `rounds` segments of kind `round`, and `rounds - 1` segments of kind `rest`
@@ -62,13 +62,13 @@ unit and integration tests.
     - Reject specs violating the bounds and report a validation error naming the offending field
     - _Requirements: 2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.11_
 
-  - [ ]* 2.3 Write property test for plan construction
+  - [x]* 2.3 Write property test for plan construction
     - **Property 4: Plan totals**
     - **Validates: Requirements 2.1, 2.2, 2.3, 2.4, 2.5, 2.6**
     - Generator: arbitrary valid `WorkoutSpec` (rounds 1–99, round 1–3600 s, rest 0–600 s,
       prep 0–60 s)
 
-  - [~] 2.4 Implement the pure elapsed/segment/snapshot computation
+  - [-] 2.4 Implement the pure elapsed/segment/snapshot computation
     - Create `lib/timer/compute.ts` with `effectiveElapsedMs`, `segmentAt`, and `snapshot`
     - Derive remaining time from `segment end boundary − supplied timestamp`, never from a
       decremented counter; compute every snapshot purely from `(EngineState, nowMs)`
