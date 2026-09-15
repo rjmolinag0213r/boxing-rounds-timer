@@ -404,14 +404,14 @@ unit and integration tests.
     - Cover week boundary inclusion/exclusion, empty input, and both duration formats
     - _Requirements: 7.3, 7.4_
 
-- [ ] 12. Add navigation, mobile layout, and accessibility
-  - [-] 12.1 Add top-level tab navigation
+- [x] 12. Add navigation, mobile layout, and accessibility
+  - [x] 12.1 Add top-level tab navigation
     - Add `Tabs` with Timer, Builder, and History triggers rendering the corresponding panel, with
       the active trigger styled from `--primary`
     - Open sound settings from the header as a `Dialog` (desktop) or `Drawer` (mobile)
     - _Requirements: 10.1, 10.2_
 
-  - [~] 12.2 Apply the mobile-first layout
+  - [x] 12.2 Apply the mobile-first layout
     - Give Start, Pause, and Stop a touch target of at least 44×44 CSS pixels each
     - Below 640 px render the primary action full container width above the secondary controls, and
       present timer settings in a bottom-sheet drawer rather than a side panel
@@ -419,20 +419,20 @@ unit and integration tests.
     - Show a transient toast when a workout completes or a workout is saved
     - _Requirements: 10.3, 10.4, 10.5, 10.9, 10.11_
 
-  - [~] 12.3 Complete the accessibility pass
+  - [x] 12.3 Complete the accessibility pass
     - Render a visible `--ring`-derived focus indicator on every keyboard-focusable element across
       the timer, builder, history, and sound settings views
     - Under `prefers-reduced-motion: reduce`, omit animated transitions or cap each at 10 ms
     - Add a visible label or `aria-label` to every interactive control in the new views
     - _Requirements: 10.6, 10.7, 10.8_
 
-  - [ ]* 12.4 Write accessibility and responsive rendering tests
+  - [x]* 12.4 Write accessibility and responsive rendering tests
     - Assert 44 px minimum control sizes, presence of accessible names, focus-visible styling, and
       reduced-motion transition durations
     - _Requirements: 10.3, 10.6, 10.7, 10.8_
 
 - [ ] 13. Ship the installable PWA
-  - [~] 13.1 Add the web app manifest and icons
+  - [-] 13.1 Add the web app manifest and icons
     - Create `public/manifest.webmanifest` with `name`, `short_name` "Boxing Timer", `start_url` "/",
       `display` "standalone", `orientation` "portrait", `background_color`, a `theme_color` equal to
       the resolved `--primary` red, and 192×192, 512×512, and maskable 512×512 icon entries
