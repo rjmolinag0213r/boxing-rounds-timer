@@ -9,9 +9,14 @@
  * wall-clock time (requirements 1.11, 1.12, 2.12). The old `setInterval` tick loop is
  * gone: it drifted and froze whenever iOS Safari throttled or suspended the tab.
  *
- * Audio is driven off the engine's transition sound events, and the AudioContext is
- * unlocked inside the Start gesture (requirement 4.1). Warning ticks are derived from the
- * snapshot's remaining time (requirement 4.3).
+ * Audio goes through the configurable `SoundEngine` (`lib/audio/soundEngine.ts`), never
+ * through `lib/audio.ts` directly, so the user's per-role assignments, volume and mute
+ * apply to every sound this view produces (requirement 3.3). The AudioContext is unlocked
+ * and resumed inside the Start gesture (requirement 4.1); each segment's end boundary and
+ * its final-seconds warning ticks are pre-scheduled on the audio clock the moment the
+ * segment becomes active (requirements 4.2, 4.3); and a hidden→visible transition resumes
+ * the context and re-schedules only the boundaries still in the future
+ * (requirements 4.4, 4.5).
  *
  * Colours are entirely token-driven: every brand accent resolves from `--primary` through
  * semantic utilities (`text-primary`, `stroke-primary`, `bg-primary/10`, `ring-primary/30`),
@@ -23,7 +28,8 @@
  * which it adopts a new spec (requirement 5.8). Deleting a workout rewrites the workout list
  * alone and never touches recorded sessions (requirement 5.9).
  *
- * Requirements: 1.11, 1.12, 2.12, 4.1, 4.3, 4.6, 4.7, 5.8, 5.9, 9.7, 9.8, 9.10, 9.11, 9.12, 9.14
+ * Requirements: 1.11, 1.12, 2.12, 3.3, 4.1, 4.2, 4.3, 4.5, 4.6, 4.7, 5.8, 5.9, 9.7, 9.8,
+ * 9.10, 9.11, 9.12, 9.14
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -46,20 +52,26 @@ import {
   ListChecks,
   Check,
   Trophy,
+  SlidersHorizontal,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
-import { DurationField, NumberStepper } from '@/app/_components/workout-inputs'
-import { toast } from 'sonner'
 import {
-  unlockAudio,
-  playRoundStartBell,
-  playRestStartBuzzer,
-  playWarningTick,
-} from '@/lib/audio'
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
+import { DurationField, NumberStepper } from '@/app/_components/workout-inputs'
+import SoundSettings from '@/app/_components/sound-settings'
+import { toast } from 'sonner'
+import { useSoundSettings } from '@/lib/audio/useSoundSettings'
+import type { SoundRole } from '@/lib/audio/types'
 import { segmentAt } from '@/lib/timer/compute'
-import type { WorkoutSpec } from '@/lib/timer/types'
+import type { Segment, WorkoutSpec } from '@/lib/timer/types'
 import { useTimerEngine, type TimerSoundEvent } from '@/lib/timer/useTimerEngine'
 import {
   DEFAULT_PREP_SECONDS,
@@ -134,8 +146,23 @@ const PHASE_ACCENTS: Record<VisualPhase, PhaseAccent> = {
 /** The rest accent applied to the rest-duration field's icon, matching `PHASE_ACCENTS.rest`. */
 const REST_ICON_CLASS = 'text-emerald-500 dark:text-emerald-400'
 
-/** Number of trailing whole seconds of a round that get a warning tick (requirement 4.3). */
-const WARNING_TICK_SECONDS = 3
+/** Stable identity for a segment, used as the sound engine's de-duplication key. */
+const segmentKeyOf = (segment: Segment): string => `${segment.kind}#${segment.index}`
+
+/**
+ * The sound role a segment's *start* announces.
+ *
+ * The timer engine's event roles and the sound engine's roles overlap but are not the same
+ * set: the engine has `prepStart` (which is deliberately silent — the lead-in is announced
+ * by a toast) while the sound layer has `warningTick` (which is pre-scheduled, never
+ * emitted as a transition). This is the explicit mapping between them.
+ */
+function soundRoleForSegment(segment: Segment | undefined): SoundRole | null {
+  if (!segment) return null
+  if (segment.kind === 'rest') return 'restStart'
+  if (segment.kind === 'round') return 'roundStart'
+  return null
+}
 
 /** `true` only when the Notifications API exists and the user has already granted it. */
 function notificationsGranted(): boolean {
@@ -182,7 +209,13 @@ export default function BoxingTimer() {
   const [prepSeconds, setPrepSeconds] = useState<number>(DEFAULT_PREP_SECONDS)
 
   // Runtime (no countdown state here — see the module docblock)
-  const [muted, setMuted] = useState<boolean>(false)
+  /**
+   * Mute lives in the sound engine, not here: it is persisted alongside the volume and the
+   * four role assignments, and the settings dialog toggles the very same value
+   * (requirements 3.6, 3.9).
+   */
+  const { engine: soundEngine, muted, toggleMuted } = useSoundSettings()
+  const [soundSettingsOpen, setSoundSettingsOpen] = useState<boolean>(false)
   const [notificationPermission, setNotificationPermission] = useState<
     NotificationPermission | 'unsupported'
   >('unsupported')
@@ -196,14 +229,6 @@ export default function BoxingTimer() {
    * its Boxing/MMA identity instead of silently demoting it to `CUSTOM` (requirement 5.8).
    */
   const [activeType, setActiveType] = useState<WorkoutType>('CUSTOM')
-
-  const mutedRef = useRef<boolean>(false)
-  useEffect(() => {
-    mutedRef.current = muted
-  }, [muted])
-
-  /** The last `round#secondsLeft` a warning tick fired for; the tick edge detector. */
-  const lastTickKeyRef = useRef<string | null>(null)
 
   // Load presets from localStorage on mount
   useEffect(() => {
@@ -241,29 +266,34 @@ export default function BoxingTimer() {
   )
 
   /**
-   * Plays the tone for a transition and posts its notification.
+   * Announces a transition through the sound engine and posts its notification.
    *
-   * The engine guarantees at most one event per reconciliation, so a resume that crossed
-   * several boundaries while backgrounded produces one bell, not a burst (requirement 2.10).
+   * The timer engine guarantees at most one event per reconciliation, so a resume that
+   * crossed several boundaries while backgrounded produces one sound, not a burst
+   * (requirement 2.10). The de-duplication key is the landed segment's identity — the same
+   * key the pre-scheduled boundary sound carries — so a boundary that already sounded off
+   * the audio clock is *not* repeated when this event arrives a moment later
+   * (requirements 4.2, 4.4).
    */
   const handleSoundEvent = useCallback(
     (event: TimerSoundEvent) => {
       const rounds = Math.max(1, totalRounds ?? 1)
       const round = event.segment.index
 
-      if (!mutedRef.current) {
-        if (event.role === 'roundStart' || event.role === 'finished') playRoundStartBell()
-        else if (event.role === 'restStart') playRestStartBuzzer()
-        // `prepStart` is intentionally silent: the lead-in is announced by a toast.
+      if (event.role === 'finished') {
+        soundEngine.play('finished', 'finished')
+        toast.success('Workout complete! Great job.', { icon: '🏆' })
+        return
       }
+
+      const role = soundRoleForSegment(event.segment)
+      // `prepStart` maps to no sound role: the lead-in is announced by a toast.
+      if (role) soundEngine.play(role, segmentKeyOf(event.segment))
 
       if (event.role === 'roundStart') postPhaseNotification('round', round, rounds)
       else if (event.role === 'restStart') postPhaseNotification('rest', round, rounds)
-      else if (event.role === 'finished') {
-        toast.success('Workout complete! Great job.', { icon: '🏆' })
-      }
     },
-    [totalRounds]
+    [totalRounds, soundEngine]
   )
 
   const {
@@ -288,24 +318,71 @@ export default function BoxingTimer() {
     if (status === 'finished' && specKey !== engineSpecKey) stop()
   }, [status, specKey, engineSpecKey, stop])
 
+  /* ---------------------------------------------------------------------- */
+  /* Pre-scheduling on the audio clock (requirements 4.2, 4.3, 4.5)          */
+  /* ---------------------------------------------------------------------- */
+
+  /** The latest snapshot, read by effects that must not re-run every 250 ms tick. */
+  const snapshotRef = useRef(snapshot)
+  snapshotRef.current = snapshot
+
+  /** Bumped on every hidden→visible transition, to force a re-schedule. */
+  const [resumeNonce, setResumeNonce] = useState<number>(0)
+
+  /** The active segment's identity — stable for the whole segment, so effects key off it. */
+  const activeSegmentKey = useMemo<string | null>(() => {
+    if (status !== 'running') return null
+    return segmentKeyOf(segmentAt(plan, snapshot.elapsedWorkoutMs).segment)
+  }, [status, plan, snapshot.elapsedWorkoutMs])
+
   /**
-   * Warning ticks for the final seconds of a round (requirement 4.3).
-   *
-   * Derived from the snapshot rather than scheduled, so a tick whose second already
-   * elapsed while the tab was hidden is simply never played.
+   * Pre-schedules the active segment's end boundary and its warning ticks against the
+   * AudioContext clock (requirement 4.2), which keeps firing under the render throttling a
+   * backgrounded tab suffers. Runs once per segment, and again on every visibility resume —
+   * where the engine drops every offset already in the past, so nothing sounds late
+   * (requirements 4.4, 4.5).
    */
   useEffect(() => {
-    if (!isRunning || snapshot.phase !== 'round') return
+    soundEngine.cancelScheduled()
+    if (status !== 'running' || activeSegmentKey === null) return
 
-    const secondsLeft = Math.ceil(snapshot.remainingMs / 1000)
-    if (secondsLeft < 1 || secondsLeft > WARNING_TICK_SECONDS) return
+    const location = segmentAt(plan, snapshotRef.current.elapsedWorkoutMs)
+    const position = plan.segments.indexOf(location.segment)
+    const next = position >= 0 ? plan.segments[position + 1] : undefined
 
-    const key = `${snapshot.currentRound}#${secondsLeft}`
-    if (lastTickKeyRef.current === key) return
-    lastTickKeyRef.current = key
+    soundEngine.scheduleSegment({
+      kind: location.segment.kind,
+      remainingMs: location.remainingMs,
+      // No next segment means this boundary is the end of the workout.
+      boundaryRole: next ? soundRoleForSegment(next) : 'finished',
+      boundaryKey: next ? segmentKeyOf(next) : 'finished',
+      tickKeyPrefix: activeSegmentKey,
+    })
 
-    if (!mutedRef.current) playWarningTick()
-  }, [isRunning, snapshot])
+    return () => {
+      soundEngine.cancelScheduled()
+    }
+  }, [soundEngine, status, activeSegmentKey, plan, resumeNonce])
+
+  /**
+   * Resumes the AudioContext and triggers a re-schedule when the tab comes back
+   * (requirement 4.5). The timer engine reconciles the *clock* on the same event; this
+   * handles the *audio*.
+   */
+  useEffect(() => {
+    if (typeof document === 'undefined') return
+
+    const onVisibilityChange = (): void => {
+      if (document.visibilityState === 'hidden') return
+      soundEngine.resume()
+      setResumeNonce((nonce) => nonce + 1)
+    }
+
+    document.addEventListener('visibilitychange', onVisibilityChange)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange)
+    }
+  }, [soundEngine])
 
   /* ---------------------------------------------------------------------- */
   /* Derived display values — all of them from the snapshot                  */
@@ -365,33 +442,39 @@ export default function BoxingTimer() {
   /* ---------------------------------------------------------------------- */
 
   const handleStart = useCallback(() => {
-    // Requirement 4.1: unlock and resume the AudioContext inside the user gesture.
-    unlockAudio()
-    lastTickKeyRef.current = null
+    // Requirement 4.1: unlock and resume the AudioContext inside the user gesture — the
+    // only moment iOS Safari permits it.
+    soundEngine.unlock()
+    soundEngine.resume()
 
     if (status === 'paused') {
       resume()
       return
     }
 
+    // A fresh run reuses the previous run's segment keys, so the "already sounded" record
+    // has to be cleared or round 1 would be silenced by round 1 of the last workout.
+    soundEngine.resetPlayback()
     start()
     toast('Get ready…', { icon: '🥊' })
-  }, [status, resume, start])
+  }, [status, resume, start, soundEngine])
 
   const handlePause = useCallback(() => {
+    // Pausing must not leave the round's boundary sound armed on the audio clock.
+    soundEngine.cancelScheduled()
     pause()
-  }, [pause])
+  }, [pause, soundEngine])
 
   const handleStop = useCallback(() => {
-    lastTickKeyRef.current = null
+    soundEngine.resetPlayback()
     stop()
-  }, [stop])
+  }, [stop, soundEngine])
 
   const handleReset = useCallback(() => {
-    lastTickKeyRef.current = null
+    soundEngine.resetPlayback()
     stop()
     toast('Timer reset')
-  }, [stop])
+  }, [stop, soundEngine])
 
   const handleEnableNotifications = useCallback(async () => {
     if (typeof window === 'undefined' || !('Notification' in window)) return
@@ -458,11 +541,11 @@ export default function BoxingTimer() {
       setActiveType(p.type ?? 'CUSTOM')
       setActivePresetId(p.id)
       // Return the engine to idle so it adopts the loaded spec.
-      lastTickKeyRef.current = null
+      soundEngine.resetPlayback()
       stop()
       toast.success(`Loaded “${p.name}”`)
     },
-    [stop]
+    [stop, soundEngine]
   )
 
   /**
@@ -510,13 +593,34 @@ export default function BoxingTimer() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => setMuted((m) => !m)}
+              onClick={toggleMuted}
               aria-label={muted ? 'Unmute' : 'Mute'}
               className="gap-2"
             >
               {muted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
               <span className="hidden sm:inline text-xs">{muted ? 'Muted' : 'Sound On'}</span>
             </Button>
+
+            {/* Sound settings. Task 12.1 gives this a Drawer on mobile; a Dialog makes the
+                feature usable today. */}
+            <Dialog open={soundSettingsOpen} onOpenChange={setSoundSettingsOpen}>
+              <DialogTrigger asChild>
+                <Button variant="ghost" size="sm" className="gap-2" aria-label="Sound settings">
+                  <SlidersHorizontal className="w-4 h-4" />
+                  <span className="hidden sm:inline text-xs">Sounds</span>
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+                <DialogHeader>
+                  <DialogTitle>Sounds</DialogTitle>
+                  <DialogDescription>
+                    Pick a sound for each moment of the workout, upload your own bell, and set the
+                    volume.
+                  </DialogDescription>
+                </DialogHeader>
+                <SoundSettings />
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
       </header>
