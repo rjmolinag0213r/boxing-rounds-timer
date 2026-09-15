@@ -1,5 +1,21 @@
 'use client'
 
+/**
+ * The timer view.
+ *
+ * This component holds **no countdown state**. Every displayed timing value — the
+ * countdown digits, the phase label, the round number and the progress ring — is derived
+ * from the `TimerSnapshot` produced by `useTimerEngine`, which computes it purely from
+ * wall-clock time (requirements 1.11, 1.12, 2.12). The old `setInterval` tick loop is
+ * gone: it drifted and froze whenever iOS Safari throttled or suspended the tab.
+ *
+ * Audio is driven off the engine's transition sound events, and the AudioContext is
+ * unlocked inside the Start gesture (requirement 4.1). Warning ticks are derived from the
+ * snapshot's remaining time (requirement 4.3).
+ *
+ * Requirements: 1.11, 1.12, 2.12, 4.1, 4.3, 4.6, 4.7
+ */
+
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -8,7 +24,9 @@ import {
   Square,
   RotateCcw,
   Bell,
+  BellRing,
   Coffee,
+  Info,
   Volume2,
   VolumeX,
   Settings2,
@@ -32,6 +50,9 @@ import {
   playRestStartBuzzer,
   playWarningTick,
 } from '@/lib/audio'
+import { segmentAt } from '@/lib/timer/compute'
+import type { WorkoutSpec } from '@/lib/timer/types'
+import { useTimerEngine, type TimerSoundEvent } from '@/lib/timer/useTimerEngine'
 import {
   DEFAULT_PRESETS,
   formatSeconds,
@@ -41,9 +62,43 @@ import {
   type Preset,
 } from '@/lib/presets'
 
-type Phase = 'idle' | 'prep' | 'round' | 'rest' | 'finished'
+/** The phases the view paints. `paused` is rendered with its underlying segment's accent. */
+type VisualPhase = 'idle' | 'prep' | 'round' | 'rest' | 'finished'
 
 const PREP_SECONDS = 5
+
+/** Number of trailing whole seconds of a round that get a warning tick (requirement 4.3). */
+const WARNING_TICK_SECONDS = 3
+
+/** `true` only when the Notifications API exists and the user has already granted it. */
+function notificationsGranted(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    'Notification' in window &&
+    window.Notification.permission === 'granted'
+  )
+}
+
+/**
+ * Posts a best-effort visual notification for a transition into `round` or `rest`
+ * (requirement 4.7). Silently does nothing without granted permission.
+ */
+function postPhaseNotification(kind: 'round' | 'rest', round: number, totalRounds: number): void {
+  if (!notificationsGranted()) return
+  try {
+    const title = kind === 'round' ? `Round ${round} of ${totalRounds}` : `Rest after round ${round}`
+    new window.Notification(title, {
+      body: kind === 'round' ? 'Hands up — work.' : 'Breathe and recover.',
+      tag: `boxing-timer-${kind}-${round}`,
+      silent: true,
+    })
+  } catch {
+    // Notification constructors throw on some platforms (notably iOS Safari); ignore.
+  }
+}
+
+const specKeyOf = (spec: WorkoutSpec): string =>
+  `${spec.prepSeconds}|${spec.rounds}|${spec.roundSeconds}|${spec.restSeconds}`
 
 export default function BoxingTimer() {
   // Configuration
@@ -53,24 +108,24 @@ export default function BoxingTimer() {
   const [restSecondsField, setRestSecondsField] = useState<number>(0)
   const [totalRounds, setTotalRounds] = useState<number>(12)
 
-  // Runtime
-  const [phase, setPhase] = useState<Phase>('idle')
-  const [currentRound, setCurrentRound] = useState<number>(1)
-  const [remaining, setRemaining] = useState<number>(180)
-  const [running, setRunning] = useState<boolean>(false)
+  // Runtime (no countdown state here — see the module docblock)
   const [muted, setMuted] = useState<boolean>(false)
+  const [notificationPermission, setNotificationPermission] = useState<
+    NotificationPermission | 'unsupported'
+  >('unsupported')
 
   // Presets
   const [presets, setPresetsState] = useState<Preset[]>([])
   const [presetName, setPresetName] = useState<string>('')
   const [activePresetId, setActivePresetId] = useState<string | null>(null)
 
-  // Interval ref
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const mutedRef = useRef<boolean>(false)
   useEffect(() => {
     mutedRef.current = muted
   }, [muted])
+
+  /** The last `round#secondsLeft` a warning tick fired for; the tick edge detector. */
+  const lastTickKeyRef = useRef<string | null>(null)
 
   // Load presets from localStorage on mount
   useEffect(() => {
@@ -82,6 +137,12 @@ export default function BoxingTimer() {
     }
   }, [])
 
+  // Reflect the current notification permission so the opt-in control can be offered.
+  useEffect(() => {
+    if (typeof window === 'undefined' || !('Notification' in window)) return
+    setNotificationPermission(window.Notification.permission)
+  }, [])
+
   const roundTotal = useMemo(
     () => Math.max(1, (roundMinutes ?? 0) * 60 + (roundSeconds ?? 0)),
     [roundMinutes, roundSeconds]
@@ -91,132 +152,196 @@ export default function BoxingTimer() {
     [restMinutes, restSecondsField]
   )
 
-  const phaseTotal = useMemo(() => {
-    if (phase === 'round') return roundTotal
-    if (phase === 'rest') return Math.max(1, restTotal)
-    if (phase === 'prep') return PREP_SECONDS
-    return roundTotal
-  }, [phase, roundTotal, restTotal])
+  const spec = useMemo<WorkoutSpec>(
+    () => ({
+      prepSeconds: PREP_SECONDS,
+      rounds: Math.max(1, totalRounds ?? 1),
+      roundSeconds: roundTotal,
+      restSeconds: restTotal,
+    }),
+    [totalRounds, roundTotal, restTotal]
+  )
 
-  const progressPct = useMemo(() => {
-    if (phaseTotal <= 0) return 0
-    const p = ((phaseTotal - remaining) / phaseTotal) * 100
-    return Math.min(100, Math.max(0, p))
-  }, [remaining, phaseTotal])
+  /**
+   * Plays the tone for a transition and posts its notification.
+   *
+   * The engine guarantees at most one event per reconciliation, so a resume that crossed
+   * several boundaries while backgrounded produces one bell, not a burst (requirement 2.10).
+   */
+  const handleSoundEvent = useCallback(
+    (event: TimerSoundEvent) => {
+      const rounds = Math.max(1, totalRounds ?? 1)
+      const round = event.segment.index
 
-  const playSound = useCallback((type: 'roundStart' | 'restStart' | 'tick') => {
-    if (mutedRef.current) return
-    if (type === 'roundStart') playRoundStartBell()
-    else if (type === 'restStart') playRestStartBuzzer()
-    else playWarningTick()
-  }, [])
+      if (!mutedRef.current) {
+        if (event.role === 'roundStart' || event.role === 'finished') playRoundStartBell()
+        else if (event.role === 'restStart') playRestStartBuzzer()
+        // `prepStart` is intentionally silent: the lead-in is announced by a toast.
+      }
 
-  const clearTimer = useCallback(() => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current)
-      intervalRef.current = null
-    }
-  }, [])
-
-  // Tick logic
-  useEffect(() => {
-    if (!running) {
-      clearTimer()
-      return
-    }
-    clearTimer()
-    intervalRef.current = setInterval(() => {
-      setRemaining((prev) => {
-        const next = prev - 1
-        // Warning ticks for last 3 seconds of round/rest
-        if (next > 0 && next <= 3) {
-          playSound('tick')
-        }
-        return next
-      })
-    }, 1000)
-    return () => clearTimer()
-  }, [running, clearTimer, playSound])
-
-  // Phase transitions when remaining hits 0
-  useEffect(() => {
-    if (!running) return
-    if (remaining > 0) return
-
-    if (phase === 'prep') {
-      // Start first round
-      setPhase('round')
-      setCurrentRound(1)
-      setRemaining(roundTotal)
-      playSound('roundStart')
-      return
-    }
-
-    if (phase === 'round') {
-      const isLast = currentRound >= totalRounds
-      if (isLast) {
-        setPhase('finished')
-        setRunning(false)
-        setRemaining(0)
-        playSound('roundStart')
+      if (event.role === 'roundStart') postPhaseNotification('round', round, rounds)
+      else if (event.role === 'restStart') postPhaseNotification('rest', round, rounds)
+      else if (event.role === 'finished') {
         toast.success('Workout complete! Great job.', { icon: '🏆' })
-        return
       }
-      if (restTotal <= 0) {
-        // skip rest
-        setCurrentRound((r) => r + 1)
-        setPhase('round')
-        setRemaining(roundTotal)
-        playSound('roundStart')
-        return
-      }
-      setPhase('rest')
-      setRemaining(restTotal)
-      playSound('restStart')
-      return
-    }
+    },
+    [totalRounds]
+  )
 
-    if (phase === 'rest') {
-      setCurrentRound((r) => r + 1)
-      setPhase('round')
-      setRemaining(roundTotal)
-      playSound('roundStart')
-      return
-    }
-  }, [remaining, running, phase, currentRound, totalRounds, roundTotal, restTotal, playSound])
+  const {
+    snapshot,
+    status,
+    spec: engineSpec,
+    plan,
+    start,
+    pause,
+    resume,
+    stop,
+  } = useTimerEngine({ spec, onSoundEvent: handleSoundEvent })
+
+  const isRunning = status === 'running'
+  const isActive = status === 'running' || status === 'paused'
+
+  // A finished workout keeps its plan, so editing the configuration afterwards has to
+  // return the engine to `idle` before the new spec can be adopted.
+  const specKey = specKeyOf(spec)
+  const engineSpecKey = specKeyOf(engineSpec)
+  useEffect(() => {
+    if (status === 'finished' && specKey !== engineSpecKey) stop()
+  }, [status, specKey, engineSpecKey, stop])
+
+  /**
+   * Warning ticks for the final seconds of a round (requirement 4.3).
+   *
+   * Derived from the snapshot rather than scheduled, so a tick whose second already
+   * elapsed while the tab was hidden is simply never played.
+   */
+  useEffect(() => {
+    if (!isRunning || snapshot.phase !== 'round') return
+
+    const secondsLeft = Math.ceil(snapshot.remainingMs / 1000)
+    if (secondsLeft < 1 || secondsLeft > WARNING_TICK_SECONDS) return
+
+    const key = `${snapshot.currentRound}#${secondsLeft}`
+    if (lastTickKeyRef.current === key) return
+    lastTickKeyRef.current = key
+
+    if (!mutedRef.current) playWarningTick()
+  }, [isRunning, snapshot])
+
+  /* ---------------------------------------------------------------------- */
+  /* Derived display values — all of them from the snapshot                  */
+  /* ---------------------------------------------------------------------- */
+
+  /** While paused the snapshot reports phase `paused`, so the accent comes from the plan. */
+  const visualPhase = useMemo<VisualPhase>(() => {
+    if (snapshot.phase !== 'paused') return snapshot.phase
+    return segmentAt(plan, snapshot.elapsedWorkoutMs).segment.kind
+  }, [snapshot, plan])
+
+  /** While idle the ring shows the configured round length as a preview of the work ahead. */
+  const idlePreviewMs = useMemo(
+    () => plan.segments.find((segment) => segment.kind === 'round')?.durationMs ?? 0,
+    [plan]
+  )
+
+  const displaySeconds = useMemo(() => {
+    const ms = snapshot.phase === 'idle' ? idlePreviewMs : snapshot.remainingMs
+    return Math.ceil(ms / 1000)
+  }, [snapshot, idlePreviewMs])
+
+  const progressPct = snapshot.progressPct
+
+  const phaseLabel = useMemo(() => {
+    if (snapshot.phase === 'paused') return 'PAUSED'
+    if (visualPhase === 'prep') return 'GET READY'
+    if (visualPhase === 'round') return `ROUND ${snapshot.currentRound}`
+    if (visualPhase === 'rest') return 'REST'
+    if (visualPhase === 'finished') return 'FINISHED'
+    return 'READY'
+  }, [snapshot.phase, snapshot.currentRound, visualPhase])
+
+  const phaseColorClass = useMemo(() => {
+    if (visualPhase === 'round') return 'text-red-500'
+    if (visualPhase === 'rest') return 'text-emerald-400'
+    if (visualPhase === 'finished') return 'text-amber-400'
+    if (visualPhase === 'prep') return 'text-sky-400'
+    return 'text-muted-foreground'
+  }, [visualPhase])
+
+  const ringColorClass = useMemo(() => {
+    if (visualPhase === 'round') return 'stroke-red-500'
+    if (visualPhase === 'rest') return 'stroke-emerald-400'
+    if (visualPhase === 'finished') return 'stroke-amber-400'
+    if (visualPhase === 'prep') return 'stroke-sky-400'
+    return 'stroke-muted-foreground/50'
+  }, [visualPhase])
+
+  const bgTintClass = useMemo(() => {
+    if (visualPhase === 'round') return 'from-red-500/10 via-transparent to-transparent'
+    if (visualPhase === 'rest') return 'from-emerald-400/10 via-transparent to-transparent'
+    if (visualPhase === 'prep') return 'from-sky-400/10 via-transparent to-transparent'
+    if (visualPhase === 'finished') return 'from-amber-400/10 via-transparent to-transparent'
+    return 'from-transparent to-transparent'
+  }, [visualPhase])
+
+  const phaseCaption = useMemo(() => {
+    if (snapshot.phase === 'paused') return 'Paused'
+    if (visualPhase === 'idle') return 'Ready when you are'
+    if (visualPhase === 'prep') return 'Starting soon'
+    if (visualPhase === 'round') return 'Work'
+    if (visualPhase === 'rest') return 'Recover'
+    return 'All rounds done'
+  }, [snapshot.phase, visualPhase])
+
+  /* ---------------------------------------------------------------------- */
+  /* Controls                                                               */
+  /* ---------------------------------------------------------------------- */
 
   const handleStart = useCallback(() => {
+    // Requirement 4.1: unlock and resume the AudioContext inside the user gesture.
     unlockAudio()
-    if (phase === 'idle' || phase === 'finished') {
-      setCurrentRound(1)
-      setPhase('prep')
-      setRemaining(PREP_SECONDS)
-      setRunning(true)
-      toast('Get ready…', { icon: '🥊' })
+    lastTickKeyRef.current = null
+
+    if (status === 'paused') {
+      resume()
       return
     }
-    setRunning(true)
-  }, [phase])
+
+    start()
+    toast('Get ready…', { icon: '🥊' })
+  }, [status, resume, start])
 
   const handlePause = useCallback(() => {
-    setRunning(false)
-  }, [])
+    pause()
+  }, [pause])
 
   const handleStop = useCallback(() => {
-    setRunning(false)
-    setPhase('idle')
-    setCurrentRound(1)
-    setRemaining(roundTotal)
-  }, [roundTotal])
+    lastTickKeyRef.current = null
+    stop()
+  }, [stop])
 
-  // Keep remaining in sync with config while idle
-  useEffect(() => {
-    if (phase === 'idle') {
-      setRemaining(roundTotal)
+  const handleReset = useCallback(() => {
+    lastTickKeyRef.current = null
+    stop()
+    toast('Timer reset')
+  }, [stop])
+
+  const handleEnableNotifications = useCallback(async () => {
+    if (typeof window === 'undefined' || !('Notification' in window)) return
+    try {
+      const result = await window.Notification.requestPermission()
+      setNotificationPermission(result)
+      if (result === 'granted') toast.success('Phase notifications enabled')
+    } catch {
+      // Older Safari rejects the promise form; nothing else to do.
     }
-  }, [roundTotal, phase])
+  }, [])
 
-  // Preset handlers
+  /* ---------------------------------------------------------------------- */
+  /* Presets                                                                */
+  /* ---------------------------------------------------------------------- */
+
   const handleSavePreset = useCallback(() => {
     const name = (presetName ?? '').trim()
     if (!name) {
@@ -239,67 +364,37 @@ export default function BoxingTimer() {
     toast.success(`Saved “${name}”`)
   }, [presetName, totalRounds, roundTotal, restTotal, presets])
 
-  const handleLoadPreset = useCallback((p: Preset) => {
-    if (!p) return
-    const rM = Math.floor((p.roundSeconds ?? 0) / 60)
-    const rS = (p.roundSeconds ?? 0) % 60
-    const restM = Math.floor((p.restSeconds ?? 0) / 60)
-    const restS = (p.restSeconds ?? 0) % 60
-    setRoundMinutes(rM)
-    setRoundSeconds(rS)
-    setRestMinutes(restM)
-    setRestSecondsField(restS)
-    setTotalRounds(Math.max(1, p.rounds ?? 1))
-    setActivePresetId(p.id)
-    // Reset runtime
-    setRunning(false)
-    setPhase('idle')
-    setCurrentRound(1)
-    toast.success(`Loaded “${p.name}”`)
-  }, [])
+  const handleLoadPreset = useCallback(
+    (p: Preset) => {
+      if (!p) return
+      const rM = Math.floor((p.roundSeconds ?? 0) / 60)
+      const rS = (p.roundSeconds ?? 0) % 60
+      const restM = Math.floor((p.restSeconds ?? 0) / 60)
+      const restS = (p.restSeconds ?? 0) % 60
+      setRoundMinutes(rM)
+      setRoundSeconds(rS)
+      setRestMinutes(restM)
+      setRestSecondsField(restS)
+      setTotalRounds(Math.max(1, p.rounds ?? 1))
+      setActivePresetId(p.id)
+      // Return the engine to idle so it adopts the loaded spec.
+      lastTickKeyRef.current = null
+      stop()
+      toast.success(`Loaded “${p.name}”`)
+    },
+    [stop]
+  )
 
-  const handleDeletePreset = useCallback((id: string) => {
-    const next = (presets ?? []).filter((p) => p?.id !== id)
-    setPresetsState(next)
-    savePresets(next)
-    if (activePresetId === id) setActivePresetId(null)
-    toast('Preset deleted')
-  }, [presets, activePresetId])
-
-  // Derived UI helpers
-  const phaseLabel = useMemo(() => {
-    if (phase === 'prep') return 'GET READY'
-    if (phase === 'round') return `ROUND ${currentRound}`
-    if (phase === 'rest') return 'REST'
-    if (phase === 'finished') return 'FINISHED'
-    return 'READY'
-  }, [phase, currentRound])
-
-  const phaseColorClass = useMemo(() => {
-    if (phase === 'round') return 'text-red-500'
-    if (phase === 'rest') return 'text-emerald-400'
-    if (phase === 'finished') return 'text-amber-400'
-    if (phase === 'prep') return 'text-sky-400'
-    return 'text-muted-foreground'
-  }, [phase])
-
-  const ringColorClass = useMemo(() => {
-    if (phase === 'round') return 'stroke-red-500'
-    if (phase === 'rest') return 'stroke-emerald-400'
-    if (phase === 'finished') return 'stroke-amber-400'
-    if (phase === 'prep') return 'stroke-sky-400'
-    return 'stroke-muted-foreground/50'
-  }, [phase])
-
-  const bgTintClass = useMemo(() => {
-    if (phase === 'round') return 'from-red-500/10 via-transparent to-transparent'
-    if (phase === 'rest') return 'from-emerald-400/10 via-transparent to-transparent'
-    if (phase === 'prep') return 'from-sky-400/10 via-transparent to-transparent'
-    if (phase === 'finished') return 'from-amber-400/10 via-transparent to-transparent'
-    return 'from-transparent to-transparent'
-  }, [phase])
-
-  const isActive = running || phase === 'round' || phase === 'rest' || phase === 'prep'
+  const handleDeletePreset = useCallback(
+    (id: string) => {
+      const next = (presets ?? []).filter((p) => p?.id !== id)
+      setPresetsState(next)
+      savePresets(next)
+      if (activePresetId === id) setActivePresetId(null)
+      toast('Preset deleted')
+    },
+    [presets, activePresetId]
+  )
 
   const clamp = (v: number, min: number, max: number) =>
     Math.min(max, Math.max(min, Number.isFinite(v) ? Math.floor(v) : min))
@@ -358,24 +453,34 @@ export default function BoxingTimer() {
               <div className="flex items-center gap-2">
                 <AnimatePresence mode="wait">
                   <motion.div
-                    key={phase}
+                    key={phaseLabel}
                     initial={{ opacity: 0, y: -4 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 4 }}
                     transition={{ duration: 0.25 }}
                     className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold tracking-widest ${phaseColorClass} bg-foreground/5`}
                   >
-                    {phase === 'round' && <Bell className="w-3.5 h-3.5" />}
-                    {phase === 'rest' && <Coffee className="w-3.5 h-3.5" />}
-                    {phase === 'finished' && <Trophy className="w-3.5 h-3.5" />}
-                    {phase === 'prep' && <Dumbbell className="w-3.5 h-3.5" />}
-                    {phase === 'idle' && <Dumbbell className="w-3.5 h-3.5" />}
+                    {snapshot.phase === 'paused' ? (
+                      <Pause className="w-3.5 h-3.5" />
+                    ) : (
+                      <>
+                        {visualPhase === 'round' && <Bell className="w-3.5 h-3.5" />}
+                        {visualPhase === 'rest' && <Coffee className="w-3.5 h-3.5" />}
+                        {visualPhase === 'finished' && <Trophy className="w-3.5 h-3.5" />}
+                        {visualPhase === 'prep' && <Dumbbell className="w-3.5 h-3.5" />}
+                        {visualPhase === 'idle' && <Dumbbell className="w-3.5 h-3.5" />}
+                      </>
+                    )}
                     <span>{phaseLabel}</span>
                   </motion.div>
                 </AnimatePresence>
               </div>
               <div className="text-xs sm:text-sm text-muted-foreground font-mono">
-                Round <span className="text-foreground font-semibold">{Math.min(currentRound, totalRounds)}</span> / {totalRounds}
+                Round{' '}
+                <span className="text-foreground font-semibold">
+                  {Math.min(snapshot.currentRound, snapshot.totalRounds)}
+                </span>{' '}
+                / {snapshot.totalRounds}
               </div>
             </div>
 
@@ -405,15 +510,15 @@ export default function BoxingTimer() {
                   />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <div className={`font-mono font-semibold tabular-nums tracking-tight ${phaseColorClass} text-6xl sm:text-7xl`}>
-                    {formatSeconds(remaining)}
+                  <div
+                    className={`font-mono font-semibold tabular-nums tracking-tight ${phaseColorClass} text-6xl sm:text-7xl`}
+                    role="timer"
+                    aria-live="off"
+                  >
+                    {formatSeconds(displaySeconds)}
                   </div>
                   <div className="mt-2 text-xs uppercase tracking-[0.25em] text-muted-foreground">
-                    {phase === 'idle' && 'Ready when you are'}
-                    {phase === 'prep' && 'Starting soon'}
-                    {phase === 'round' && 'Work'}
-                    {phase === 'rest' && 'Recover'}
-                    {phase === 'finished' && 'All rounds done'}
+                    {phaseCaption}
                   </div>
                 </div>
               </div>
@@ -421,14 +526,14 @@ export default function BoxingTimer() {
 
             {/* Controls */}
             <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
-              {!running ? (
+              {!isRunning ? (
                 <Button
                   size="lg"
                   onClick={handleStart}
                   className="bg-red-500 hover:bg-red-600 text-white gap-2 px-6 shadow-md"
                 >
                   <Play className="w-4 h-4" />
-                  {phase === 'idle' || phase === 'finished' ? 'Start Workout' : 'Resume'}
+                  {status === 'paused' ? 'Resume' : 'Start Workout'}
                 </Button>
               ) : (
                 <Button
@@ -446,26 +551,45 @@ export default function BoxingTimer() {
                 variant="outline"
                 onClick={handleStop}
                 className="gap-2 px-6"
-                disabled={phase === 'idle'}
+                disabled={status === 'idle'}
               >
                 <Square className="w-4 h-4" />
                 Stop
               </Button>
-              <Button
-                size="lg"
-                variant="ghost"
-                onClick={() => {
-                  setRunning(false)
-                  setPhase('idle')
-                  setCurrentRound(1)
-                  setRemaining(roundTotal)
-                  toast('Timer reset')
-                }}
-                className="gap-2"
-              >
+              <Button size="lg" variant="ghost" onClick={handleReset} className="gap-2">
                 <RotateCcw className="w-4 h-4" />
                 Reset
               </Button>
+            </div>
+
+            {/* Background-audio limitation notice (requirement 4.6) */}
+            <div className="mt-8 flex items-start gap-2.5 rounded-lg bg-foreground/[0.03] px-3 py-2.5 text-[11px] leading-relaxed text-muted-foreground">
+              <Info className="mt-0.5 w-3.5 h-3.5 flex-shrink-0" aria-hidden="true" />
+              <div>
+                <p>
+                  <span className="font-semibold text-foreground">Background audio:</span> iOS
+                  suspends web audio while the browser is backgrounded or the screen is locked, so
+                  the bell and warning ticks will not sound during that time. The timer itself keeps
+                  running on wall-clock time and stays accurate — it catches up to the correct round
+                  and remaining time as soon as you return to the foreground.
+                </p>
+                {notificationPermission === 'default' && (
+                  <Button
+                    variant="link"
+                    size="sm"
+                    onClick={handleEnableNotifications}
+                    className="h-auto p-0 mt-1 text-[11px] gap-1.5"
+                  >
+                    <BellRing className="w-3 h-3" />
+                    Enable round notifications
+                  </Button>
+                )}
+                {notificationPermission === 'granted' && (
+                  <p className="mt-1 text-[11px]">
+                    Round and rest notifications are on for this device.
+                  </p>
+                )}
+              </div>
             </div>
           </Card>
 
@@ -600,7 +724,7 @@ export default function BoxingTimer() {
         </div>
 
         <footer className="mt-12 text-center text-xs text-muted-foreground">
-          <p>Tip: audio unlocks after you press Start. Keep the tab visible for best accuracy.</p>
+          <p>Tip: audio unlocks after you press Start. The countdown stays accurate even if you switch apps.</p>
         </footer>
       </main>
     </div>
