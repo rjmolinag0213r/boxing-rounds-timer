@@ -653,33 +653,49 @@ Summary:
 
 **P1 — Elapsed monotonicity.** Effective elapsed time never decreases as `now` advances while running.
 
+**Validates: Requirement 1.3**
+
 ### Property 2: Pause freezes the clock
 
 **P2 — Pause freezes the clock.** Effective elapsed time is constant while paused.
+
+**Validates: Requirements 1.4, 1.7, 6.3**
 
 ### Property 3: Background resilience (no drift)
 
 **P3 — Background resilience (no drift).** A single large time jump yields the same snapshot as many small steps summing to the same delta.
 
+**Validates: Requirements 1.1, 1.2, 1.6**
+
 ### Property 4: Plan totals
 
 **P4 — Plan totals.** Segment durations sum to `plan.totalMs` and round count matches `spec.rounds`.
+
+**Validates: Requirements 2.1, 2.2, 2.3, 2.4, 2.5, 2.6**
 
 ### Property 5: Phase-transition correctness
 
 **P5 — Phase-transition correctness.** Walking `now` across the workout visits segments in order with no skips/repeats, ending in `finished`.
 
+**Validates: Requirement 2.7**
+
 ### Property 6: Boundary landing
 
 **P6 — Boundary landing.** At an exact boundary, `segmentAt` returns the next segment (or stays on the last at `totalMs`).
+
+**Validates: Requirements 2.8, 2.9**
 
 ### Property 7: Clamp safety
 
 **P7 — Clamp safety.** `remainingMs >= 0` and `progressPct ∈ [0,100]` for all inputs, including early/late `now`.
 
+**Validates: Requirements 1.9, 1.10**
+
 ### Property 8: Catch-up sound discipline
 
 **P8 — Catch-up sound discipline.** A single reconciliation across N crossed boundaries emits at most one transition sound.
+
+**Validates: Requirements 2.10, 4.4**
 
 ---
 
