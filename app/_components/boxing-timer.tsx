@@ -13,7 +13,12 @@
  * unlocked inside the Start gesture (requirement 4.1). Warning ticks are derived from the
  * snapshot's remaining time (requirement 4.3).
  *
- * Requirements: 1.11, 1.12, 2.12, 4.1, 4.3, 4.6, 4.7
+ * Colours are entirely token-driven: every brand accent resolves from `--primary` through
+ * semantic utilities (`text-primary`, `stroke-primary`, `bg-primary/10`, `ring-primary/30`),
+ * so light and dark mode are decided in `app/globals.css` with no component-level colour
+ * branching (requirements 9.7, 9.8, 9.12, 9.14).
+ *
+ * Requirements: 1.11, 1.12, 2.12, 4.1, 4.3, 4.6, 4.7, 9.7, 9.8, 9.10, 9.11, 9.12, 9.14
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -64,6 +69,64 @@ import {
 
 /** The phases the view paints. `paused` is rendered with its underlying segment's accent. */
 type VisualPhase = 'idle' | 'prep' | 'round' | 'rest' | 'finished'
+
+/** The accent classes one phase paints itself with. All reds come from `--primary`. */
+type PhaseAccent = {
+  /** Large type (the countdown, ≥ 18 px) — red may be the full-strength `--primary`. */
+  text: string
+  /** Type below 18 px — red uses the darker `--accent-foreground` (requirement 9.10). */
+  smallText: string
+  /** The progress-ring stroke. */
+  ring: string
+  /** The page background tint gradient's `from-*` stop. */
+  tint: string
+}
+
+/**
+ * Per-phase accents (requirement 9.11). `round` is the brand red (`--primary`, hue 0) and
+ * `rest` is a cool green ~160° away in hue, so the "am I working or recovering?" glance is
+ * unmistakable mid-workout — and stays legible for colour-vision-deficient users. `prep`
+ * is a muted slate ("about to start") and `finished` is a celebratory amber.
+ *
+ * Red is never hardcoded here: `text-primary`, `stroke-primary` and `from-primary/10`
+ * resolve through the token system, so the light/dark blocks in `globals.css` are the
+ * single source of truth (requirements 9.7, 9.12, 9.14).
+ */
+const PHASE_ACCENTS: Record<VisualPhase, PhaseAccent> = {
+  idle: {
+    text: 'text-muted-foreground',
+    smallText: 'text-muted-foreground',
+    ring: 'stroke-muted-foreground/50',
+    tint: 'from-transparent to-transparent',
+  },
+  prep: {
+    text: 'text-slate-500 dark:text-slate-300',
+    smallText: 'text-slate-600 dark:text-slate-300',
+    ring: 'stroke-slate-400',
+    tint: 'from-slate-500/10 via-transparent to-transparent',
+  },
+  round: {
+    text: 'text-primary',
+    smallText: 'text-accent-foreground',
+    ring: 'stroke-primary',
+    tint: 'from-primary/10 via-transparent to-transparent',
+  },
+  rest: {
+    text: 'text-emerald-500 dark:text-emerald-400',
+    smallText: 'text-emerald-700 dark:text-emerald-400',
+    ring: 'stroke-emerald-500',
+    tint: 'from-emerald-500/10 via-transparent to-transparent',
+  },
+  finished: {
+    text: 'text-amber-500 dark:text-amber-400',
+    smallText: 'text-amber-700 dark:text-amber-400',
+    ring: 'stroke-amber-500',
+    tint: 'from-amber-500/10 via-transparent to-transparent',
+  },
+}
+
+/** The rest accent applied to the rest-duration field's icon, matching `PHASE_ACCENTS.rest`. */
+const REST_ICON_CLASS = 'text-emerald-500 dark:text-emerald-400'
 
 const PREP_SECONDS = 5
 
@@ -261,29 +324,17 @@ export default function BoxingTimer() {
     return 'READY'
   }, [snapshot.phase, snapshot.currentRound, visualPhase])
 
-  const phaseColorClass = useMemo(() => {
-    if (visualPhase === 'round') return 'text-red-500'
-    if (visualPhase === 'rest') return 'text-emerald-400'
-    if (visualPhase === 'finished') return 'text-amber-400'
-    if (visualPhase === 'prep') return 'text-sky-400'
-    return 'text-muted-foreground'
-  }, [visualPhase])
+  const accent = PHASE_ACCENTS[visualPhase]
 
-  const ringColorClass = useMemo(() => {
-    if (visualPhase === 'round') return 'stroke-red-500'
-    if (visualPhase === 'rest') return 'stroke-emerald-400'
-    if (visualPhase === 'finished') return 'stroke-amber-400'
-    if (visualPhase === 'prep') return 'stroke-sky-400'
-    return 'stroke-muted-foreground/50'
-  }, [visualPhase])
+  /** The countdown accent — large type, so the full-strength red is safe here. */
+  const phaseColorClass = accent.text
 
-  const bgTintClass = useMemo(() => {
-    if (visualPhase === 'round') return 'from-red-500/10 via-transparent to-transparent'
-    if (visualPhase === 'rest') return 'from-emerald-400/10 via-transparent to-transparent'
-    if (visualPhase === 'prep') return 'from-sky-400/10 via-transparent to-transparent'
-    if (visualPhase === 'finished') return 'from-amber-400/10 via-transparent to-transparent'
-    return 'from-transparent to-transparent'
-  }, [visualPhase])
+  /** The phase badge accent — `text-xs`, so red drops to `--accent-foreground`. */
+  const phaseBadgeColorClass = accent.smallText
+
+  const ringColorClass = accent.ring
+
+  const bgTintClass = accent.tint
 
   const phaseCaption = useMemo(() => {
     if (snapshot.phase === 'paused') return 'Paused'
@@ -415,8 +466,8 @@ export default function BoxingTimer() {
       <header className="sticky top-0 z-30 w-full backdrop-blur bg-background/70 border-b border-border/40">
         <div className="mx-auto max-w-[1200px] px-4 sm:px-6 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-md bg-red-500/10 flex items-center justify-center">
-              <Bell className="w-4 h-4 text-red-500" />
+            <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center">
+              <Bell className="w-4 h-4 text-primary" />
             </div>
             <span className="font-display font-semibold tracking-tight">Boxing Timer</span>
           </div>
@@ -439,7 +490,7 @@ export default function BoxingTimer() {
         {/* Purpose statement */}
         <div className="text-center mb-8">
           <h1 className="font-display text-3xl sm:text-4xl font-semibold tracking-tight">
-            Train by the <span className="text-red-500">bell</span>.
+            Train by the <span className="text-primary">bell</span>.
           </h1>
           <p className="mt-2 text-sm sm:text-base text-muted-foreground">
             Configure rounds and rests, save presets, and let the timer keep you honest.
@@ -458,7 +509,7 @@ export default function BoxingTimer() {
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: 4 }}
                     transition={{ duration: 0.25 }}
-                    className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold tracking-widest ${phaseColorClass} bg-foreground/5`}
+                    className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold tracking-widest ${phaseBadgeColorClass} bg-foreground/5`}
                   >
                     {snapshot.phase === 'paused' ? (
                       <Pause className="w-3.5 h-3.5" />
@@ -527,11 +578,9 @@ export default function BoxingTimer() {
             {/* Controls */}
             <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
               {!isRunning ? (
-                <Button
-                  size="lg"
-                  onClick={handleStart}
-                  className="bg-red-500 hover:bg-red-600 text-white gap-2 px-6 shadow-md"
-                >
+                // The stock default variant supplies bg-primary / text-primary-foreground
+                // (requirement 9.8), so no color classes are set here.
+                <Button size="lg" onClick={handleStart} className="gap-2 px-6 shadow-md">
                   <Play className="w-4 h-4" />
                   {status === 'paused' ? 'Resume' : 'Start Workout'}
                 </Button>
@@ -598,7 +647,7 @@ export default function BoxingTimer() {
             {/* Settings */}
             <Card className="p-5 bg-card/60 backdrop-blur shadow-md">
               <div className="flex items-center gap-2 mb-4">
-                <Settings2 className="w-4 h-4 text-red-500" />
+                <Settings2 className="w-4 h-4 text-primary" />
                 <h2 className="font-display font-semibold tracking-tight">Settings</h2>
               </div>
 
@@ -621,7 +670,7 @@ export default function BoxingTimer() {
                     setRoundSeconds(clamp(s, 0, 59))
                   }}
                   disabled={isActive}
-                  icon={<Bell className="w-3.5 h-3.5 text-red-500" />}
+                  icon={<Bell className="w-3.5 h-3.5 text-primary" />}
                 />
 
                 <DurationField
@@ -633,7 +682,7 @@ export default function BoxingTimer() {
                     setRestSecondsField(clamp(s, 0, 59))
                   }}
                   disabled={isActive}
-                  icon={<Coffee className="w-3.5 h-3.5 text-emerald-400" />}
+                  icon={<Coffee className={`w-3.5 h-3.5 ${REST_ICON_CLASS}`} />}
                 />
 
                 <div className="pt-2 text-xs text-muted-foreground flex items-center justify-between">
@@ -648,7 +697,7 @@ export default function BoxingTimer() {
             {/* Presets */}
             <Card className="p-5 bg-card/60 backdrop-blur shadow-md">
               <div className="flex items-center gap-2 mb-4">
-                <ListChecks className="w-4 h-4 text-red-500" />
+                <ListChecks className="w-4 h-4 text-primary" />
                 <h2 className="font-display font-semibold tracking-tight">Presets</h2>
               </div>
 
@@ -686,7 +735,7 @@ export default function BoxingTimer() {
                           transition={{ duration: 0.2 }}
                           className={`group flex items-center justify-between gap-2 rounded-lg px-3 py-2.5 transition-colors ${
                             isActiveP
-                              ? 'bg-red-500/10 ring-1 ring-red-500/30'
+                              ? 'bg-primary/10 ring-1 ring-primary/30'
                               : 'bg-foreground/[0.03] hover:bg-foreground/[0.06]'
                           }`}
                         >
@@ -695,7 +744,7 @@ export default function BoxingTimer() {
                             className="flex-1 text-left min-w-0"
                           >
                             <div className="flex items-center gap-1.5 min-w-0">
-                              {isActiveP && <Check className="w-3.5 h-3.5 text-red-500 flex-shrink-0" />}
+                              {isActiveP && <Check className="w-3.5 h-3.5 text-primary flex-shrink-0" />}
                               <span className="text-sm font-medium truncate">{p?.name ?? 'Untitled'}</span>
                             </div>
                             <div className="mt-0.5 text-[11px] text-muted-foreground font-mono">

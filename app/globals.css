@@ -13,24 +13,26 @@
     --popover: 0 0% 100%;
     --popover-foreground: 240 10% 3.9%;
 
-    --primary: 262 83% 58%;
+    /* Boxing red is the brand: --primary drives buttons, accents and the focus ring. */
+    --primary: 0 84% 55%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 240 4.8% 95.9%;
+    --secondary: 0 40% 96%;
     --secondary-foreground: 240 5.9% 10%;
 
-    --muted: 240 4.8% 95.9%;
+    --muted: 0 20% 96%;
     --muted-foreground: 240 3.8% 46.1%;
 
-    --accent: 240 4.8% 95.9%;
-    --accent-foreground: 240 5.9% 10%;
+    --accent: 0 60% 96%;
+    /* Darker red reserved for small red text so it clears 4.5:1 on --background. */
+    --accent-foreground: 0 72% 42%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 240 5.9% 90%;
-    --input: 240 5.9% 90%;
-    --ring: 262 83% 58%;
+    --border: 0 15% 90%;
+    --input: 0 15% 90%;
+    --ring: 0 84% 55%;
 
     --radius: 0.625rem;
     --radius-sm: calc(0.625rem - 4px);
@@ -53,11 +55,11 @@
     --duration-normal: 250ms;
     --duration-slow: 350ms;
 
-    --chart-1: 262 83% 58%;
-    --chart-2: 173 58% 39%;
-    --chart-3: 12 76% 61%;
-    --chart-4: 197 37% 24%;
-    --chart-5: 43 74% 66%;
+    --chart-1: 0 84% 55%;
+    --chart-2: 0 72% 51%;
+    --chart-3: 14 90% 55%;
+    --chart-4: 0 60% 40%;
+    --chart-5: 340 75% 55%;
   }
 
   .dark {
@@ -70,33 +72,35 @@
     --popover: 240 10% 5.9%;
     --popover-foreground: 0 0% 98%;
 
-    --primary: 263 70% 50%;
+    /* Red tuned for the near-black surface; --foreground stays near-white (0 0% 98%). */
+    --primary: 0 72% 51%;
     --primary-foreground: 0 0% 100%;
 
-    --secondary: 240 3.7% 15.9%;
+    --secondary: 0 25% 15%;
     --secondary-foreground: 0 0% 98%;
 
+    /* Muted stays neutral-dark so body copy keeps its existing contrast. */
     --muted: 240 3.7% 15.9%;
     --muted-foreground: 240 5% 64.9%;
 
-    --accent: 240 3.7% 15.9%;
+    --accent: 0 30% 18%;
     --accent-foreground: 0 0% 98%;
 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
 
-    --border: 240 3.7% 15.9%;
-    --input: 240 3.7% 15.9%;
-    --ring: 263 70% 50%;
+    --border: 0 15% 18%;
+    --input: 0 15% 18%;
+    --ring: 0 72% 51%;
 
     --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.15), 0 1px 2px -1px rgb(0 0 0 / 0.15);
     --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.2), 0 2px 4px -2px rgb(0 0 0 / 0.15);
     --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.25), 0 4px 6px -4px rgb(0 0 0 / 0.15);
 
-    --chart-1: 263 70% 50%;
-    --chart-2: 160 60% 45%;
-    --chart-3: 30 80% 55%;
-    --chart-4: 280 65% 60%;
+    --chart-1: 0 72% 51%;
+    --chart-2: 0 84% 60%;
+    --chart-3: 14 85% 58%;
+    --chart-4: 0 55% 45%;
     --chart-5: 340 75% 55%;
   }
 }
@@ -135,18 +139,18 @@
   .scrollbar-none::-webkit-scrollbar { display: none; }
   .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
 
-  /* Hero background */
+  /* Hero background — red family only (no purple/violet/indigo hues). */
   .hero-gradient {
     background:
-      radial-gradient(ellipse 60% 50% at 50% -10%, hsl(262 83% 58% / 0.12), transparent),
-      radial-gradient(ellipse 40% 40% at 80% 0%, hsl(280 80% 60% / 0.08), transparent),
-      radial-gradient(ellipse 40% 30% at 20% 10%, hsl(240 80% 60% / 0.06), transparent);
+      radial-gradient(ellipse 60% 50% at 50% -10%, hsl(0 84% 55% / 0.12), transparent),
+      radial-gradient(ellipse 40% 40% at 80% 0%, hsl(0 72% 51% / 0.08), transparent),
+      radial-gradient(ellipse 40% 30% at 20% 10%, hsl(14 90% 55% / 0.06), transparent);
   }
 
   .dark .hero-gradient {
     background:
-      radial-gradient(ellipse 60% 50% at 50% -10%, hsl(263 70% 50% / 0.2), transparent),
-      radial-gradient(ellipse 40% 40% at 80% 0%, hsl(280 80% 60% / 0.1), transparent),
-      radial-gradient(ellipse 40% 30% at 20% 10%, hsl(240 80% 60% / 0.08), transparent);
+      radial-gradient(ellipse 60% 50% at 50% -10%, hsl(0 72% 51% / 0.2), transparent),
+      radial-gradient(ellipse 40% 40% at 80% 0%, hsl(0 84% 60% / 0.1), transparent),
+      radial-gradient(ellipse 40% 30% at 20% 10%, hsl(14 85% 58% / 0.08), transparent);
   }
 }
