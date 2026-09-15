@@ -44,7 +44,7 @@ unit and integration tests.
     - Verify with a trivial passing smoke test that the runner and alias resolution work
     - _Requirements: 1.2, 13.3_
 
-- [ ] 2. Build the wall-clock timer engine (the background-drift bug fix)
+- [x] 2. Build the wall-clock timer engine (the background-drift bug fix)
   - [x] 2.1 Create the timer domain types
     - Create `lib/timer/types.ts` exporting `Phase`, `WorkoutSpec`, `Segment`, `TimelinePlan`,
       `EngineState` (with `status: 'idle' | 'running' | 'paused' | 'finished'`, `startedAtMs`,
@@ -110,7 +110,7 @@ unit and integration tests.
     - Assert the validation error names the offending field for out-of-bounds specs
     - _Requirements: 2.3, 2.5, 2.11_
 
-  - [-] 2.12 Implement the React binding and visibility reconciler
+  - [x] 2.12 Implement the React binding and visibility reconciler
     - Create `lib/timer/useTimerEngine.ts` as a `useReducer` over `EngineState` plus a driver effect
     - Run the driver at 250 ms while the document is visible so the display refreshes at least
       once every 250 ms
@@ -121,27 +121,27 @@ unit and integration tests.
       elapsed 0
     - _Requirements: 1.5, 1.11, 2.10, 2.12, 1.7_
 
-  - [ ]* 2.13 Write property test for catch-up sound discipline
+  - [x]* 2.13 Write property test for catch-up sound discipline
     - **Property 8: Catch-up sound discipline**
     - **Validates: Requirements 2.10, 4.4**
 
-  - [ ]* 2.14 Write unit tests for the reconciler
+  - [x]* 2.14 Write unit tests for the reconciler
     - Simulate a `visibilitychange` hidden→visible event with an injected clock jump and assert a
       single reconciliation, correct phase, and reconciliation latency under 250 ms
     - _Requirements: 1.5, 2.12_
 
-- [~] 3. Checkpoint - timer engine correctness
+- [x] 3. Checkpoint - timer engine correctness
   - Ensure all tests pass, ask the user if questions arise.
 
-- [ ] 4. Refactor the timer view onto the engine
-  - [~] 4.1 Replace the `setInterval` countdown with `useTimerEngine`
+- [x] 4. Refactor the timer view onto the engine
+  - [x] 4.1 Replace the `setInterval` countdown with `useTimerEngine`
     - Delete the `setInterval` tick loop, the `remaining` state, the `running` flag, and the
       `useEffect` watching `remaining <= 0` from `app/_components/boxing-timer.tsx`
     - Derive every displayed timing value (countdown, phase label, round number, progress ring)
       from the `TimerSnapshot`, holding no independent countdown state
     - _Requirements: 1.11, 1.12, 2.12_
 
-  - [~] 4.2 Wire alerts and the background-audio notice
+  - [x] 4.2 Wire alerts and the background-audio notice
     - Play the existing `lib/audio.ts` synth tones from the engine's emitted sound events, unlocking
       and resuming the AudioContext inside the Start user-gesture handler
     - Play the warning tick once per remaining whole second during the final 3 seconds of a `round`
@@ -151,13 +151,13 @@ unit and integration tests.
       permission is granted
     - _Requirements: 4.1, 4.3, 4.6, 4.7_
 
-  - [ ]* 4.3 Write integration test for the background/foreground flow
+  - [x]* 4.3 Write integration test for the background/foreground flow
     - Start a workout, simulate a visibility change with a large clock jump, foreground, and assert
       the phase and remaining time match wall-clock expectations
     - _Requirements: 1.5, 1.6, 1.11_
 
-- [ ] 5. Apply the red-and-white theme
-  - [~] 5.1 Retint the design tokens in `app/globals.css`
+- [x] 5. Apply the red-and-white theme
+  - [x] 5.1 Retint the design tokens in `app/globals.css`
     - Replace the purple `--primary` (`262 83% 58%` / `263 70% 50%`) with boxing red
       (`0 84% 55%` light / `0 72% 51%` dark) and set `--ring` to the same value in both blocks
     - Retint `--secondary`, `--muted`, `--accent`, `--accent-foreground`, `--border`, `--input`, and
@@ -169,7 +169,7 @@ unit and integration tests.
       unchanged
     - _Requirements: 9.1, 9.2, 9.3, 9.4, 9.5, 9.6, 9.9, 9.13_
 
-  - [~] 5.2 Migrate hardcoded red utilities to semantic tokens
+  - [x] 5.2 Migrate hardcoded red utilities to semantic tokens
     - Replace all 12 `red-500`/`red-600` occurrences in `app/_components/boxing-timer.tsx` with
       `text-primary`, `stroke-primary`, `bg-primary/10`, `ring-primary/30`, and `from-primary/10`
     - Render Start/Resume as the stock `Button` default variant, dropping the custom
@@ -179,7 +179,7 @@ unit and integration tests.
     - Use `--accent-foreground` or `--foreground` for red text below 18 px on `--background`
     - _Requirements: 9.7, 9.8, 9.10, 9.11, 9.12, 9.14_
 
-  - [ ]* 5.3 Write deterministic theme-token assertions
+  - [x]* 5.3 Write deterministic theme-token assertions
     - Assert `app/globals.css` declares `--primary` and `--ring` with a hue in 0–14 in both `:root`
       and `.dark`, and that the hero gradient contains no purple/violet/indigo hues
     - Assert `app/_components/boxing-timer.tsx` contains zero occurrences of `red-500` and `red-600`
@@ -188,7 +188,7 @@ unit and integration tests.
     - _Requirements: 9.7, 9.13_
 
 - [ ] 6. Evolve the preset model for Boxing and MMA
-  - [~] 6.1 Extend the `Preset` type and default workouts
+  - [-] 6.1 Extend the `Preset` type and default workouts
     - Add `type: WorkoutType` (`'BOXING' | 'MMA' | 'CUSTOM'`) and optional `prepSeconds` to the
       `Preset` interface in `lib/presets.ts`
     - Define the three typed Boxing defaults (Classic 12×3 / Amateur 3×2 / Speed 10×1, prep 5 s)

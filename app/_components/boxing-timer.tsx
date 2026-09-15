@@ -64,6 +64,7 @@ import {
   generateId,
   loadPresets,
   savePresets,
+  workoutTypeLabel,
   type Preset,
 } from '@/lib/presets'
 
@@ -402,9 +403,13 @@ export default function BoxingTimer() {
     const newPreset: Preset = {
       id: generateId(),
       name,
+      // Hand-configured from the timer panel; the Workout Builder assigns
+      // BOXING/MMA explicitly.
+      type: 'CUSTOM',
       rounds: totalRounds,
       roundSeconds: roundTotal,
       restSeconds: restTotal,
+      prepSeconds: PREP_SECONDS,
       createdAt: Date.now(),
     }
     const next = [...(presets ?? []), newPreset]
@@ -746,6 +751,9 @@ export default function BoxingTimer() {
                             <div className="flex items-center gap-1.5 min-w-0">
                               {isActiveP && <Check className="w-3.5 h-3.5 text-primary flex-shrink-0" />}
                               <span className="text-sm font-medium truncate">{p?.name ?? 'Untitled'}</span>
+                              <span className="ml-auto flex-shrink-0 rounded border border-border bg-muted px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground">
+                                {workoutTypeLabel(p?.type)}
+                              </span>
                             </div>
                             <div className="mt-0.5 text-[11px] text-muted-foreground font-mono">
                               {p?.rounds ?? 0} × {formatSeconds(p?.roundSeconds ?? 0)}

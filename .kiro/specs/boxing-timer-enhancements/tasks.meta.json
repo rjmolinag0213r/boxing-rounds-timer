@@ -108,6 +108,11 @@
         "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
         "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
         "timestamp": 1789442129603
+      },
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789442540533
       }
     ],
     "3. Checkpoint - timer engine correctness": [
@@ -115,6 +120,11 @@
         "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
         "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
         "timestamp": 1789441303309
+      },
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789442559266
       }
     ],
     "4.1 Replace the `setInterval` countdown with `useTimerEngine`": [
@@ -122,6 +132,16 @@
         "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
         "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
         "timestamp": 1789441303316
+      },
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789442562511
+      },
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789442977500
       }
     ],
     "4.2 Wire alerts and the background-audio notice": [
@@ -129,6 +149,11 @@
         "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
         "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
         "timestamp": 1789441303320
+      },
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789442982053
       }
     ],
     "5.1 Retint the design tokens in `app/globals.css`": [
@@ -136,6 +161,16 @@
         "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
         "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
         "timestamp": 1789441303323
+      },
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789442989213
+      },
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789443329675
       }
     ],
     "5.2 Migrate hardcoded red utilities to semantic tokens": [
@@ -143,6 +178,11 @@
         "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
         "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
         "timestamp": 1789441303327
+      },
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789443332709
       }
     ],
     "6.1 Extend the `Preset` type and default workouts": [
@@ -150,6 +190,11 @@
         "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
         "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
         "timestamp": 1789441303330
+      },
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789443338681
       }
     ],
     "6.2 Implement the v1 → v2 storage migration": [
@@ -437,6 +482,55 @@
         "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
         "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
         "timestamp": 1789442126507
+      }
+    ],
+    "2. Build the wall-clock timer engine (the background-drift bug fix)": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789442540537
+      }
+    ],
+    "2.13 Write property test for catch-up sound discipline": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789442543597
+      }
+    ],
+    "2.14 Write unit tests for the reconciler": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789442546772
+      }
+    ],
+    "4. Refactor the timer view onto the engine": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789442982057
+      }
+    ],
+    "4.3 Write integration test for the background/foreground flow": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789442986194
+      }
+    ],
+    "5. Apply the red-and-white theme": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789443332713
+      }
+    ],
+    "5.3 Write deterministic theme-token assertions": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789443335681
       }
     ]
   }
