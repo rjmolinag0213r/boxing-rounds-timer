@@ -537,6 +537,11 @@
         "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
         "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
         "timestamp": 1789448292907
+      },
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789449305148
       }
     ],
     "13.2 Emit the PWA document metadata": [
@@ -544,6 +549,11 @@
         "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
         "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
         "timestamp": 1789441303431
+      },
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789449308440
       }
     ],
     "13.3 Add the service worker and its registration": [
@@ -551,6 +561,11 @@
         "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
         "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
         "timestamp": 1789441303435
+      },
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789449311806
       }
     ],
     "13.4 Add the install affordances": [
@@ -558,6 +573,11 @@
         "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
         "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
         "timestamp": 1789441303438
+      },
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789449314991
       }
     ],
     "14.1 Delete the expenses boilerplate": [
@@ -565,6 +585,11 @@
         "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
         "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
         "timestamp": 1789441303441
+      },
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789449321597
       }
     ],
     "14.2 Verify the typecheck and production build": [
@@ -572,6 +597,11 @@
         "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
         "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
         "timestamp": 1789441303447
+      },
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789449324728
       }
     ],
     "15. Final checkpoint": [
@@ -579,6 +609,11 @@
         "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
         "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
         "timestamp": 1789441303451
+      },
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789449360750
       }
     ],
     "1. Set up the test toolchain": [
@@ -782,6 +817,27 @@
         "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
         "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
         "timestamp": 1789448288955
+      }
+    ],
+    "13. Ship the installable PWA": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789449314994
+      }
+    ],
+    "13.5 Write deterministic PWA asset assertions": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789449318364
+      }
+    ],
+    "14. Remove the dead code": [
+      {
+        "executionId": "e00e076b-11b7-4a11-a56e-1cf14c717b69",
+        "chatSessionId": "41b476e4-24fe-4576-ae9a-aecfb8c204f0",
+        "timestamp": 1789449324736
       }
     ]
   }

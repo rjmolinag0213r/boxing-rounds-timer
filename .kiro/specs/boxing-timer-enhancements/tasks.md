@@ -431,21 +431,21 @@ unit and integration tests.
       reduced-motion transition durations
     - _Requirements: 10.3, 10.6, 10.7, 10.8_
 
-- [ ] 13. Ship the installable PWA
-  - [-] 13.1 Add the web app manifest and icons
+- [x] 13. Ship the installable PWA
+  - [x] 13.1 Add the web app manifest and icons
     - Create `public/manifest.webmanifest` with `name`, `short_name` "Boxing Timer", `start_url` "/",
       `display` "standalone", `orientation` "portrait", `background_color`, a `theme_color` equal to
       the resolved `--primary` red, and 192×192, 512×512, and maskable 512×512 icon entries
     - Add the corresponding icon files under `public/icons/`
     - _Requirements: 11.1, 11.10_
 
-  - [~] 13.2 Emit the PWA document metadata
+  - [x] 13.2 Emit the PWA document metadata
     - Extend `app/layout.tsx` `metadata`/`viewport` exports to link the manifest and set
       `apple-mobile-web-app-capable`, `apple-mobile-web-app-status-bar-style`, `apple-touch-icon`,
       and `theme-color` so home-screen launches render standalone without browser chrome
     - _Requirements: 11.2, 11.3_
 
-  - [~] 13.3 Add the service worker and its registration
+  - [x] 13.3 Add the service worker and its registration
     - Create `public/sw.js` caching the app shell and the bundled `public/sounds/` assets on install
       and serving the timer screen from cache when offline
     - Use network-first for `/api/*` and propagate failures to the client so the repository applies
@@ -453,31 +453,31 @@ unit and integration tests.
     - Register from a small client component on mount and activate a new version on next launch
     - _Requirements: 11.4, 11.5, 11.6, 11.7, 11.11_
 
-  - [~] 13.4 Add the install affordances
+  - [x] 13.4 Add the install affordances
     - Show a custom install control driven by `beforeinstallprompt` where supported
     - On iOS Safari outside standalone mode, show a dismissible Share → "Add to Home Screen" hint
       that appears at most once per browser profile after dismissal
     - _Requirements: 11.8, 11.9_
 
-  - [ ]* 13.5 Write deterministic PWA asset assertions
+  - [x]* 13.5 Write deterministic PWA asset assertions
     - Assert the manifest declares every required field and icon entry and that its `theme_color`
       matches the resolved `--primary` red, and that `sw.js` uses network-first for `/api/`
     - Deterministic assertions, not property tests: these are fixed file contents
     - _Requirements: 11.1, 11.6, 11.10_
 
-- [ ] 14. Remove the dead code
-  - [~] 14.1 Delete the expenses boilerplate
+- [x] 14. Remove the dead code
+  - [x] 14.1 Delete the expenses boilerplate
     - Remove `Expense`, `ExpenseFormData`, `EXPENSE_CATEGORIES`, and `DateRange` from `lib/types.ts`,
       leaving only the timer-domain exports added earlier
     - Grep the codebase to confirm zero remaining references to those four identifiers
     - _Requirements: 13.1, 13.2_
 
-  - [~] 14.2 Verify the typecheck and production build
+  - [x] 14.2 Verify the typecheck and production build
     - Run `npm run typecheck` and `npm run build` and fix any error surfaced by the cleanup so both
       complete with zero errors
     - _Requirements: 13.3_
 
-- [~] 15. Final checkpoint
+- [x] 15. Final checkpoint
   - Ensure all tests pass, ask the user if questions arise.
 
 ## Notes
