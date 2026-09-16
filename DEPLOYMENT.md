@@ -64,10 +64,37 @@ Add any additional variables the app needs on the **app service → Variables** 
 |----------|----------|-------|
 | `DATABASE_URL` | ✅ | Reference to the Postgres plugin (Step 3). |
 | `NODE_ENV` | Recommended | Set to `production`. |
-| `NEXTAUTH_URL` | If auth is enabled | Your public Railway URL, e.g. `https://your-app.up.railway.app`. |
-| `NEXTAUTH_SECRET` | If auth is enabled | A strong random secret (`openssl rand -base64 32`). |
+| `NEXTAUTH_URL` | For sign-in | Your public Railway URL, no trailing slash. |
+| `NEXTAUTH_SECRET` | For sign-in | A strong random secret (`openssl rand -base64 32`). |
+| `GITHUB_ID` / `GITHUB_SECRET` | One provider required for sign-in | GitHub OAuth app credentials. |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Alternative provider | Google OAuth client credentials. |
 
 > `$PORT` is injected automatically by Railway — do not hardcode a port. Next.js `start` respects it.
+
+### Enabling cross-device sync (workouts and history on every device)
+
+Workout history and saved workouts are stored **per device** until a user signs in. Sync is
+per-account, so `DATABASE_URL` alone is not enough — accounts are enabled only when **all three**
+of these hold:
+
+1. `DATABASE_URL` is set (Step 3).
+2. **At least one OAuth provider** is configured (`GITHUB_ID` + `GITHUB_SECRET`, or the Google pair).
+3. `NEXTAUTH_URL` **and** `NEXTAUTH_SECRET` are both set.
+
+If 1 and 2 hold but 3 does not, `/api/auth` answers **503** naming the missing variables rather
+than signing anyone in against an unsigned cookie.
+
+**Creating a GitHub OAuth app** (the quickest provider to set up):
+
+1. Go to <https://github.com/settings/developers> → **New OAuth App**.
+2. **Homepage URL**: your `NEXTAUTH_URL`.
+3. **Authorization callback URL**: `<NEXTAUTH_URL>/api/auth/callback/github`.
+4. Copy the Client ID into `GITHUB_ID` and a generated client secret into `GITHUB_SECRET`.
+
+See [`.env.example`](.env.example) for every variable with inline notes.
+
+> **Without any of this the app still works** — it simply stays in local-only mode, storing
+> workouts and history in the browser. Nothing errors and nothing is lost.
 
 ---
 
