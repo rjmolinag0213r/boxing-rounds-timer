@@ -108,6 +108,18 @@ describe('package.json scripts (requirements 12.6, 12.7, 12.8)', () => {
     expect(pkg.scripts['migrate:deploy']).toBe('prisma migrate deploy')
   })
 
+  it('ships the `prisma` CLI as a runtime dependency, not a devDependency', () => {
+    // Railway's `preDeployCommand` (`npm run migrate:deploy` -> `prisma migrate deploy`) runs
+    // AFTER the build, in the devDependency-pruned runtime image. With `prisma` in
+    // devDependencies the CLI is not guaranteed to be present there, and the pre-deploy step
+    // dies with `prisma: command not found` (exit 127) — which is why the pairing migration
+    // never applied in production. Keep the CLI in `dependencies` so it survives pruning.
+    expect(pkg.dependencies.prisma).toBe('6.7.0')
+    expect(pkg.devDependencies?.prisma).toBeUndefined()
+    // The generated client is a runtime dependency too, and must stay one.
+    expect(pkg.dependencies['@prisma/client']).toBe('6.7.0')
+  })
+
   it('pins Node to major version 20', () => {
     expect(pkg.engines.node).toBe('>=20 <21')
     expect(read('.nvmrc').trim()).toBe('20')

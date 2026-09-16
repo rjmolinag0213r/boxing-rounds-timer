@@ -125,7 +125,7 @@ worthless — see the fidelity rules in task 1.
 
 - [ ] 3. Fix for pairing routes returning 500 when the pairing schema is missing
 
-  - [ ] 3.1 Move `prisma` from `devDependencies` to `dependencies` **[REQUIRED — highest value, independently shippable]**
+  - [x] 3.1 Move `prisma` from `devDependencies` to `dependencies` **[REQUIRED — highest value, independently shippable]**
     - **This is the confirmed root cause and is very likely sufficient on its own.** Ship and validate it before doing anything else
     - Move `prisma` (`6.7.0`) from `devDependencies` to `dependencies`; `@prisma/client` is already a dependency
     - Leave `migrate:deploy` as literally `prisma migrate deploy` — `deployment-config.test.ts:105` pins that exact string and must keep passing unmodified
