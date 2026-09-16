@@ -54,6 +54,22 @@ export function databaseUnavailable(
   )
 }
 
+/**
+ * 429 — the caller has exhausted a rate-limit budget (requirement 4.6).
+ *
+ * `Retry-After` in whole seconds, per RFC 9110, so a well-behaved client waits exactly long
+ * enough; the same number is repeated in the body because `fetch` in a browser can read a
+ * response body far more conveniently than a header on a failed request.
+ */
+export function tooManyRequests(retryAfterSeconds: number): NextResponse {
+  const seconds = Math.max(1, Math.ceil(retryAfterSeconds))
+
+  return NextResponse.json(
+    { error: 'Too many attempts. Try again shortly.', reason: 'rate-limited', retryAfterSeconds: seconds },
+    { status: 429, headers: { 'Retry-After': String(seconds) } }
+  )
+}
+
 /** 500 — an unexpected server-side failure that is not a connectivity problem. */
 export function serverError(): NextResponse {
   return NextResponse.json({ error: 'Unexpected server error' }, { status: 500 })

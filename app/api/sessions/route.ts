@@ -18,7 +18,7 @@
 
 import { NextResponse } from 'next/server'
 
-import { resolveAuth } from '@/lib/auth'
+import { resolveIdentity as resolveAuth } from '@/lib/identity'
 import {
   badRequest,
   databaseUnavailable,

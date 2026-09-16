@@ -11,7 +11,7 @@
 
 import { NextResponse } from 'next/server'
 
-import { resolveAuth } from '@/lib/auth'
+import { resolveIdentity as resolveAuth } from '@/lib/identity'
 import { databaseUnavailable, errorResponse, unauthorized } from '@/lib/data/apiResponses'
 import { getPrismaClient } from '@/lib/db'
 
