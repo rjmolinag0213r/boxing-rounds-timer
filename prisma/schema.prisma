@@ -1,5 +1,5 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
   binaryTargets = ["native", "linux-musl-arm64-openssl-3.0.x"]
 }
 
@@ -27,6 +27,10 @@ model User {
   workouts        Workout[]
   workoutSessions WorkoutSession[]
   createdAt       DateTime         @default(now())
+
+  /// The sync space this row is the Shadow_User of, when it is one. A relation field only:
+  /// it emits no column, so the `User` table gets no SQL from this feature (requirement 16.1).
+  syncSpace SyncSpace?
 }
 
 model Account {
@@ -78,7 +82,7 @@ enum WorkoutType {
 /// (requirement 8.5).
 model Workout {
   id           String      @id @default(cuid())
-  /// null => a record synced without an account.
+  /// The owning identity: an OAuth user, or a sync space's shadow user. null => local-only.
   userId       String?
   name         String
   type         WorkoutType @default(BOXING)
@@ -102,6 +106,7 @@ model Workout {
 /// after the workout definition it came from is deleted (requirements 6.4, 6.6).
 model WorkoutSession {
   id              String      @id @default(cuid())
+  /// The owning identity: an OAuth user, or a sync space's shadow user. null => local-only.
   userId          String?
   /// Nullable: the workout definition may be deleted later.
   workoutId       String?
@@ -122,4 +127,94 @@ model WorkoutSession {
   workout Workout? @relation(fields: [workoutId], references: [id], onDelete: SetNull)
 
   @@index([userId, endedAt])
+}
+
+// ---------------------------------------------------------------------------
+// Device pairing (account-free sync).
+//
+// These four tables are the whole server-side footprint of the pairing feature.
+// Nothing above this comment changes shape: `Workout` and `WorkoutSession` keep
+// their columns and indexes verbatim, and `User` gains only a relation field.
+// ---------------------------------------------------------------------------
+
+/// An anonymous, account-free identity shared by every device paired into it.
+///
+/// 1:1 with a shadow `User` row, whose id is the value stored in `Workout.userId` and
+/// `WorkoutSession.userId`. That indirection exists because those columns carry a foreign
+/// key to `User`, so an identity must *be* a User to own records.
+model SyncSpace {
+  id        String    @id @default(cuid())
+  /// The shadow user this space owns. Deleting it cascades away the space and all its data.
+  userId    String    @unique
+  createdAt DateTime  @default(now())
+  /// Bumped on rotation, so the UI can show "rotated 2 days ago".
+  rotatedAt DateTime?
+
+  user    User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  codes   PairingCode[]
+  devices PairedDevice[]
+}
+
+/// A short-lived, single-use capability to join a `SyncSpace`.
+///
+/// Only the SHA-256 hash is stored: a database leak must not yield live codes, and the
+/// server never needs the plaintext again after handing it to the creating device.
+model PairingCode {
+  id          String    @id @default(cuid())
+  syncSpaceId String
+  /// SHA-256 of the normalized code, hex. Unique so a claim is one indexed lookup.
+  codeHash    String    @unique
+  expiresAt   DateTime
+  /// Set the instant the code is claimed. Non-null => spent, and it can never be replayed.
+  consumedAt  DateTime?
+  createdAt   DateTime  @default(now())
+
+  syncSpace SyncSpace @relation(fields: [syncSpaceId], references: [id], onDelete: Cascade)
+
+  /// Drives the expiry sweep.
+  @@index([expiresAt])
+  @@index([syncSpaceId])
+}
+
+/// One browser holding a device token for a `SyncSpace`.
+model PairedDevice {
+  id          String   @id @default(cuid())
+  syncSpaceId String
+  /// SHA-256 of the 32-byte token, hex. The raw token exists only in the cookie.
+  tokenHash   String   @unique
+  /// Coarse, user-facing label derived from the User-Agent ("Chrome on macOS").
+  /// Deliberately coarse: no full UA string, no IP address, no fingerprint is retained.
+  label       String
+  createdAt   DateTime @default(now())
+  /// Throttled to at most one write per hour to avoid a write on every API request.
+  lastSeenAt  DateTime @default(now())
+
+  syncSpace SyncSpace @relation(fields: [syncSpaceId], references: [id], onDelete: Cascade)
+
+  @@index([syncSpaceId])
+}
+
+/// A rate-limit ledger row: one per claim or code-creation attempt.
+///
+/// Postgres-backed rather than Redis-backed *specifically* to hold the zero-new-env-var
+/// goal. Rows are swept after 24h, so the table stays small.
+model PairingAttempt {
+  id        String             @id @default(cuid())
+  /// Truncated SHA-256 of the client IP. Obfuscation, not anonymisation — retention is the
+  /// control (requirement 15.7).
+  ipHash    String
+  kind      PairingAttemptKind
+  /// false for a rejected claim. Counted for rate limiting regardless of *why* it failed.
+  succeeded Boolean            @default(false)
+  createdAt DateTime           @default(now())
+
+  /// The window query: attempts for this ip since T.
+  @@index([ipHash, createdAt])
+  /// The sweep.
+  @@index([createdAt])
+}
+
+enum PairingAttemptKind {
+  CREATE
+  CLAIM
 }
