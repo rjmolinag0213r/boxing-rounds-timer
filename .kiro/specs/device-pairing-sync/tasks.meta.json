@@ -47,6 +47,10 @@
     "3.5 Write property test for backoff monotonicity and bound": {
       "status": "passed",
       "lastRunTimestamp": 1789595329487
+    },
+    "8.3 Write property test for the pair-and-merge seam": {
+      "status": "passed",
+      "lastRunTimestamp": 1789596931019
     }
   },
   "executionHistory": {}

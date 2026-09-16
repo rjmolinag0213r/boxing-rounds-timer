@@ -17,6 +17,7 @@ const ROOT = path.resolve(__dirname, '..')
 
 const GLOBALS_CSS = readFileSync(path.join(ROOT, 'app', 'globals.css'), 'utf8')
 const TIMER_VIEW = readFileSync(path.join(ROOT, 'app', '_components', 'boxing-timer.tsx'), 'utf8')
+const SYNC_VIEW = readFileSync(path.join(ROOT, 'app', '_components', 'sync-settings.tsx'), 'utf8')
 const TAILWIND_CONFIG = readFileSync(path.join(ROOT, 'tailwind.config.ts'), 'utf8')
 
 /** Slices out a declaration block by its selector, up to the block's closing brace. */
@@ -137,6 +138,76 @@ describe('app/_components/boxing-timer.tsx accent usage', () => {
     for (const utility of ['text-primary', 'stroke-primary', 'bg-primary/10', 'ring-primary/30']) {
       expect(TIMER_VIEW).toContain(utility)
     }
+  })
+})
+
+describe('app/_components/sync-settings.tsx accent usage', () => {
+  /**
+   * Every Tailwind palette family, so a literal colour cannot slip in under a name the
+   * `red-500`/`red-600` check would miss. The Sync surface introduces destructive and
+   * emphasis states, which are exactly the two places a literal red is most tempting.
+   *
+   * Requirement 12.15.
+   */
+  const PALETTE_FAMILIES = [
+    'slate',
+    'gray',
+    'zinc',
+    'neutral',
+    'stone',
+    'red',
+    'orange',
+    'amber',
+    'yellow',
+    'lime',
+    'green',
+    'emerald',
+    'teal',
+    'cyan',
+    'sky',
+    'blue',
+    'indigo',
+    'violet',
+    'purple',
+    'fuchsia',
+    'pink',
+    'rose',
+  ] as const
+
+  it('contains zero hardcoded red-500 / red-600 utilities', () => {
+    // The same assertion the timer view carries, extended to the Sync surface.
+    expect(SYNC_VIEW.match(/red-500/g)).toBeNull()
+    expect(SYNC_VIEW.match(/red-600/g)).toBeNull()
+  })
+
+  it('contains zero literal Tailwind palette classes of any family', () => {
+    for (const family of PALETTE_FAMILIES) {
+      const literal = new RegExp(`(?:bg|text|border|ring|stroke|fill|divide)-${family}-\\d{2,3}`, 'g')
+      expect(SYNC_VIEW.match(literal), `sync-settings.tsx uses a literal ${family} class`).toBeNull()
+    }
+  })
+
+  it('expresses its states through semantic tokens', () => {
+    // Emphasis, secondary text, surfaces and the destructive action all resolve through tokens.
+    for (const utility of [
+      'text-primary',
+      'bg-primary/10',
+      'text-muted-foreground',
+      'bg-muted/40',
+      'border-border',
+      'text-destructive',
+    ]) {
+      expect(SYNC_VIEW).toContain(utility)
+    }
+    // The destructive control goes through the button variant, i.e. through `--destructive`.
+    expect(SYNC_VIEW).toContain('variant="destructive"')
+  })
+
+  it('keeps the 44 pixel, --ring focus and reduced-motion conventions', () => {
+    // Requirements 12.14, 12.16, 12.17.
+    expect(SYNC_VIEW).toContain('min-h-[44px]')
+    expect(SYNC_VIEW).toContain('focus-visible:ring-ring')
+    expect(SYNC_VIEW).toContain('motion-reduce:transition-none')
   })
 })
 

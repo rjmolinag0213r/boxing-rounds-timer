@@ -9,7 +9,7 @@
  * **Validates: Requirements 10.1, 10.2, 10.9, 10.11**
  */
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import BoxingApp from '@/app/_components/boxing-app'
@@ -160,6 +160,68 @@ describe('BoxingApp sound settings surface', () => {
     expect(drawer.className).toContain('rounded-t-')
     expect(drawer.className).not.toContain('top-[50%]')
     expect(screen.getByRole('switch', { name: /mute all sounds/i })).toBeInTheDocument()
+  })
+})
+
+describe('BoxingApp sync surface', () => {
+  beforeEach(() => {
+    window.localStorage.clear()
+    resetWorkoutLibraryForTests()
+    toastMock.mockClear()
+  })
+
+  it('opens sync as a dialog at 640 px and up', async () => {
+    // Requirement 12.1: the Sounds pattern, applied to the second device setting.
+    stubViewport({ mobile: false })
+    render(<BoxingApp />)
+
+    fireEvent.click(screen.getByRole('button', { name: /sync devices/i }))
+
+    const dialog = await screen.findByRole('dialog')
+    expect(dialog).toHaveAttribute('data-state', 'open')
+    expect(dialog.className).toContain('top-[50%]')
+    expect(dialog.className).not.toContain('bottom-0')
+    // Requirement 12.18: capped height with vertical overflow, so a long device list scrolls.
+    expect(dialog.className).toContain('max-h-[85vh]')
+    expect(dialog.className).toContain('overflow-y-auto')
+    expect(within(dialog).getByRole('heading', { name: /^status$/i })).toBeInTheDocument()
+  })
+
+  it('opens sync as a bottom-sheet drawer below 640 px', async () => {
+    stubViewport({ mobile: true })
+    render(<BoxingApp />)
+
+    fireEvent.click(screen.getByRole('button', { name: /sync devices/i }))
+
+    const drawer = await screen.findByRole('dialog')
+    expect(drawer.className).toContain('bottom-0')
+    expect(drawer.className).toContain('max-h-[85vh]')
+    expect(drawer.className).not.toContain('top-[50%]')
+    expect(within(drawer).getByRole('heading', { name: /^status$/i })).toBeInTheDocument()
+  })
+
+  it.each([
+    ['desktop', false],
+    ['mobile', true],
+  ])('mounts exactly one sync surface on %s, so no accessible name is duplicated', (_label, mobile) => {
+    // Requirement 12.2: `accessibility.test.tsx` relies on this — two mounted surfaces would
+    // put two "Sync devices" buttons in the accessibility tree with identical names.
+    stubViewport({ mobile })
+    render(<BoxingApp />)
+
+    expect(screen.getAllByRole('button', { name: /sync devices/i })).toHaveLength(1)
+  })
+
+  it('keeps exactly the three existing tabs', () => {
+    // Requirement 12.3: sync is a device setting, not a fourth workout surface.
+    stubViewport()
+    render(<BoxingApp />)
+
+    expect(screen.getAllByRole('tab').map((element) => element.textContent)).toEqual([
+      'Timer',
+      'Builder',
+      'History',
+    ])
   })
 })
 

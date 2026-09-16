@@ -25,11 +25,24 @@
  * builder also jumps back to the timer, because saving a workout is something a user does in
  * order to *use* it.
  *
- * Requirements: 10.1, 10.2, 10.6, 10.7, 10.8, 10.11
+ * **Sync settings follow the same pattern.** Device pairing is a device setting, not a workout
+ * surface, so it lives beside Sounds in the header rather than becoming a fourth tab — the tab
+ * count stays at exactly three (requirements 12.1, 12.2, 12.3).
+ *
+ * Requirements: 10.1, 10.2, 10.6, 10.7, 10.8, 10.11, 12.1, 12.2, 12.3, 12.18
  */
 
 import { useCallback, useState } from 'react'
-import { Bell, Hammer, History, SlidersHorizontal, Timer, Volume2, VolumeX } from 'lucide-react'
+import {
+  Bell,
+  Hammer,
+  History,
+  RefreshCw,
+  SlidersHorizontal,
+  Timer,
+  Volume2,
+  VolumeX,
+} from 'lucide-react'
 
 import { Button } from '@/components/ui/button'
 import {
@@ -53,6 +66,7 @@ import { ThemeToggle } from '@/components/theme-toggle'
 import BoxingTimer from '@/app/_components/boxing-timer'
 import HistoryView from '@/app/_components/history-view'
 import SoundSettings from '@/app/_components/sound-settings'
+import SyncSettings from '@/app/_components/sync-settings'
 import WorkoutBuilder from '@/app/_components/workout-builder'
 import { useSoundSettings } from '@/lib/audio/useSoundSettings'
 import { useIsMobileViewport } from '@/lib/ui/useMediaQuery'
@@ -81,6 +95,7 @@ const TAB_TRIGGER_CLASS =
 export default function BoxingApp() {
   const [tab, setTab] = useState<AppTab>('timer')
   const [soundSettingsOpen, setSoundSettingsOpen] = useState<boolean>(false)
+  const [syncSettingsOpen, setSyncSettingsOpen] = useState<boolean>(false)
   const { muted, toggleMuted } = useSoundSettings()
   const isMobile = useIsMobileViewport()
 
@@ -98,6 +113,21 @@ export default function BoxingApp() {
 
   const soundSettingsBlurb =
     'Pick a sound for each moment of the workout, upload your own bell, and set the volume.'
+
+  /**
+   * The Sync trigger sits beside Sounds because sync is a *device setting*, the category the
+   * header already owns — the three tabs are workout surfaces, and a fourth would push each
+   * trigger under a comfortable thumb width on a 360 px viewport (requirements 12.1, 12.3).
+   */
+  const syncSettingsTrigger = (
+    <Button variant="ghost" size="sm" className="gap-2 min-h-[44px]" aria-label="Sync devices">
+      <RefreshCw className="w-4 h-4" aria-hidden="true" />
+      <span className="hidden sm:inline text-xs">Sync</span>
+    </Button>
+  )
+
+  const syncSettingsBlurb =
+    'Pair another device with a short code, see what is paired, and start over if you need to.'
 
   return (
     <div className="min-h-screen w-full bg-background text-foreground">
@@ -152,6 +182,37 @@ export default function BoxingApp() {
                     <DialogDescription>{soundSettingsBlurb}</DialogDescription>
                   </DialogHeader>
                   <SoundSettings />
+                </DialogContent>
+              </Dialog>
+            )}
+
+            {/*
+              Requirements 12.1, 12.2, 12.18: the Sounds pattern verbatim — a drawer below
+              640 px, a dialog from 640 px up, and exactly one of the two mounted at any width
+              so "Sync devices" never appears twice in the accessibility tree.
+            */}
+            {isMobile ? (
+              <Drawer open={syncSettingsOpen} onOpenChange={setSyncSettingsOpen}>
+                <DrawerTrigger asChild>{syncSettingsTrigger}</DrawerTrigger>
+                <DrawerContent className="max-h-[85vh]">
+                  <DrawerHeader>
+                    <DrawerTitle>Sync</DrawerTitle>
+                    <DrawerDescription>{syncSettingsBlurb}</DrawerDescription>
+                  </DrawerHeader>
+                  <div className="overflow-y-auto px-4 pb-8">
+                    <SyncSettings />
+                  </div>
+                </DrawerContent>
+              </Drawer>
+            ) : (
+              <Dialog open={syncSettingsOpen} onOpenChange={setSyncSettingsOpen}>
+                <DialogTrigger asChild>{syncSettingsTrigger}</DialogTrigger>
+                <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
+                  <DialogHeader>
+                    <DialogTitle>Sync</DialogTitle>
+                    <DialogDescription>{syncSettingsBlurb}</DialogDescription>
+                  </DialogHeader>
+                  <SyncSettings />
                 </DialogContent>
               </Dialog>
             )}

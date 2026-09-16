@@ -389,6 +389,17 @@ export interface SyncState {
   pendingCount: number
   /** The most recent sync failure, for a tooltip or a retry affordance. */
   lastError: string | null
+  /**
+   * Which identity source is active: an OAuth account, or a paired device cookie. Undefined
+   * in Local_Only_Mode.
+   *
+   * Deliberately a *new optional field* rather than a third `mode` value: `mode` is a union
+   * that `getState()`, the existing tests, and every UI switch already depend on, so widening
+   * it would be a breaking change for no gain. `source` carries the distinction on its own.
+   *
+   * Requirements: 11.1, 11.2, 11.3
+   */
+  source?: 'oauth' | 'paired'
 }
 
 export interface SyncingRepositoryOptions {
@@ -430,6 +441,7 @@ export class SyncingRepository implements WorkoutRepository {
   private readonly listeners = new Set<(state: SyncState) => void>()
 
   private userId: string | null = null
+  private source: 'oauth' | 'paired' | undefined = undefined
   private lastError: string | null = null
   /** Serializes reconcile/retry so two triggers cannot interleave their writes. */
   private inFlight: Promise<void> = Promise.resolve()
@@ -454,6 +466,9 @@ export class SyncingRepository implements WorkoutRepository {
       synchronized: this.userId === null ? true : pendingCount === 0,
       pendingCount,
       lastError: this.lastError,
+      // Undefined in Local_Only_Mode, and undefined too when a caller supplied no source —
+      // the field is optional precisely so neither case needs an invented value.
+      source: this.userId === null ? undefined : this.source,
     }
   }
 
@@ -480,9 +495,10 @@ export class SyncingRepository implements WorkoutRepository {
    * storage is the whole account, the phone→computer fix (requirement 8.3). Signing out drops
    * straight back to browser storage (requirement 8.11).
    */
-  async setSession(userId: string | null): Promise<void> {
+  async setSession(userId: string | null, source?: 'oauth' | 'paired'): Promise<void> {
     if (userId === null) {
       this.userId = null
+      this.source = undefined
       this.lastError = null
       // Pending marks describe work owed *for an account*; in Local_Only_Mode there is no
       // account to owe it to. A later sign-in re-pushes anything the server lacks anyway.
@@ -492,6 +508,7 @@ export class SyncingRepository implements WorkoutRepository {
     }
 
     this.userId = userId
+    this.source = source
     this.notify()
     await this.enqueue(() => this.reconcile(userId))
   }
