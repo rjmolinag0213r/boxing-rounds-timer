@@ -1,5 +1,22 @@
 # Implementation Plan
 
+## Overview
+
+This plan fixes pairing routes returning `500 {"error":"Unexpected server error"}` when the pairing
+schema is missing from a database that is configured and reachable. The work has four movements:
+
+1. **Make the migration apply, robustly** — a pre-deploy guard that resolves the Prisma CLI,
+   handles the P3005 baseline case, verifies with `migrate status`, and fails the release loudly.
+2. **Classify the fault** — `P2021`/`P2022` become a third category alongside unreachable and
+   unknown, answering `503 {reason:'schema-not-migrated'}` with exactly one redacted diagnostic.
+3. **Attribute it honestly to the user** — the client stops folding this `503` into `unreachable`,
+   and the Sync panel says the *server* is not ready, that it is not the user's fault, and that
+   local data is safe.
+4. **Make the probes truthful** — `/api/pair/identity` and `/api/health` stop advertising sync
+   readiness they have not verified.
+
+The "Before you start" preamble below carries the operational detail and must be read in full.
+
 ## Before you start
 
 **Root cause 2 is CONFIRMED, not hypothesised.** Hiding `node_modules/prisma` (simulating
@@ -55,6 +72,8 @@ condition is reachable *only* through the in-memory fake at
 worthless — see the fidelity rules in task 1.
 
 ---
+
+## Tasks
 
 - [ ] 1. Write bug condition exploration test **[REQUIRED]**
   - **Property 1: Bug Condition** - Missing pairing schema yields a classified fault, self-reports, and is attributed honestly
@@ -293,3 +312,167 @@ worthless — see the fidelity rules in task 1.
   - A `webidl.util.markAsUncloneable` collection failure means you are on Node 20 — switch to Node 22; it is **not** a regression you introduced
   - Push the branch and open a PR; do **not** commit to `master`, which auto-deploys on every push
   - Ensure all tests pass, ask the user if questions arise
+
+
+## Task Dependency Graph
+
+Tasks 1 and 2 come first and are independent of each other. Task **3.1 is independently
+shippable** — it is the confirmed root cause, blocks nothing, and should be committed and deployed
+on its own before the rest of the work begins.
+
+```mermaid
+graph TD
+    subgraph Explore["Before the fix — independent of each other"]
+        T1["1. Bug condition exploration test<br/>(Property 1 — must FAIL)"]
+        T2["2. Preservation property tests<br/>(Property 2 — must PASS)"]
+    end
+
+    subgraph Ship["Independently shippable — blocks nothing"]
+        T31["3.1 Move prisma to dependencies<br/>confirmed root cause, ship first"]
+    end
+
+    T33["3.3 syncUnavailableReason.ts<br/>shared closed union"]
+    T32["3.2 Pre-deploy migration guard"]
+    T34["3.4 schemaReadiness.ts<br/>cached probe + noteSchemaFault()"]
+    T35["3.5 Classifier + single diagnostic"]
+    T36["3.6 Route context at call sites"]
+    T37["3.7 Truthful identity probe"]
+    T38["3.8 Passive health readiness fields"]
+    T39["3.9 pairingClient reason parsing"]
+    T310["3.10 repositoryClient records reason"]
+    T311["3.11 Sync panel copy"]
+    T312["3.12 Re-run exploration test<br/>EXPECT PASS"]
+    T313["3.13 Re-run preservation tests<br/>EXPECT PASS"]
+    T4["4. Integration + property hardening<br/>[OPTIONAL]"]
+    T5["5. Checkpoint — full gate"]
+
+    T1 --> T33
+    T2 --> T33
+
+    T33 --> T34
+    T34 --> T35
+    T35 --> T36
+    T35 --> T37
+    T35 --> T38
+
+    T33 --> T39
+    T39 --> T310
+    T310 --> T311
+
+    T32 --> T312
+    T36 --> T312
+    T37 --> T312
+    T38 --> T312
+    T311 --> T312
+    T312 --> T313
+    T313 --> T4
+    T313 --> T5
+    T4 --> T5
+
+    T31 -.->|"no dependants"| T5
+
+    style T31 fill:#dff5e1,stroke:#2e7d32,stroke-width:3px
+    style T1 fill:#fdecea,stroke:#c62828
+    style T2 fill:#e8f0fe,stroke:#1565c0
+```
+
+**Why these edges exist:**
+
+| Edge | Reason |
+|---|---|
+| 1, 2 → everything | Both tests are written and run against **unfixed** code, so they must precede all implementation |
+| 3.1 → *(nothing)* | A `package.json` dependency move touching no source file; ship and validate it first, independently |
+| 3.3 → 3.4–3.11 | Both server (`apiResponses.ts`) and client (`pairingClient.ts`) import the shared union; a reason added on one side without the other must be a type error |
+| **3.4 → 3.5** | `errorResponse` calls `noteSchemaFault()` from `schemaReadiness.ts`. **This is the one place dependency order deviates from the design's movement order** — movement 4 is built before movement 2 |
+| 3.5 → 3.6, 3.7, 3.8 | All three consume the classifier: route context, the readiness verdict it feeds, and the cache it populates |
+| 3.9 → 3.10 → 3.11 | The client parses the reason, `repositoryClient` records it, the panel renders it |
+| all impl → 3.12, 3.13 | The tests from tasks 1 and 2 are **re-run**, not rewritten; they can only flip once every implementation task lands |
+| 3.13 → 4, 5 | Optional hardening and the final gate come last |
+
+### Execution Waves
+
+```json
+{
+  "waves": [
+    {
+      "wave": 1,
+      "tasks": ["1", "2", "3.1"],
+      "notes": "Tasks 1 and 2 run against unfixed code and are independent of each other. Task 3.1 is a package.json-only change with no dependants — independently shippable, and should be committed and deployed on its own first."
+    },
+    {
+      "wave": 2,
+      "tasks": ["3.2", "3.3"],
+      "notes": "The pre-deploy migration guard is independent of the shared union; both need only wave 1."
+    },
+    {
+      "wave": 3,
+      "tasks": ["3.4", "3.9"],
+      "notes": "Both depend only on 3.3; the readiness probe and the client reason-parsing are separate chains."
+    },
+    {
+      "wave": 4,
+      "tasks": ["3.5", "3.10"],
+      "notes": "3.5 depends on 3.4; 3.10 depends on 3.9."
+    },
+    {
+      "wave": 5,
+      "tasks": ["3.6", "3.7", "3.8", "3.11"],
+      "notes": "3.6, 3.7 and 3.8 all consume the classifier from 3.5; 3.11 depends on 3.10."
+    },
+    {
+      "wave": 6,
+      "tasks": ["3.12"],
+      "notes": "Re-runs the exploration test from task 1; requires 3.2, 3.6, 3.7, 3.8 and 3.11."
+    },
+    {
+      "wave": 7,
+      "tasks": ["3.13"],
+      "notes": "Re-runs the preservation tests from task 2; depends on 3.12."
+    },
+    {
+      "wave": 8,
+      "tasks": ["4"],
+      "notes": "Optional integration and property hardening; depends on 3.13."
+    },
+    {
+      "wave": 9,
+      "tasks": ["5"],
+      "notes": "Final checkpoint gate; the documented edges 3.13 → 5 and 4 → 5 require it to follow task 4 in its own wave."
+    }
+  ]
+}
+```
+
+## Notes
+
+- **Use Node 22.** `npm` and `node` are not on the default `PATH`; load them with
+  `export NVM_DIR="$HOME/.nvm"; . "$NVM_DIR/nvm.sh"`. Under the Node 20 pinned by `.nvmrc` and
+  `engines`, 29 of 34 test files fail to collect with
+  `TypeError: webidl.util.markAsUncloneable is not a function` (thrown from the undici bundled
+  inside jsdom). **This is pre-existing and out of scope — do not fix it, do not add a task for it,
+  and do not misread it as a regression you introduced.**
+
+- **The verification gate is four commands, and every task must leave all four green:**
+  1. `export NVM_DIR="$HOME/.nvm"; . "$NVM_DIR/nvm.sh"`
+  2. `npm run typecheck`
+  3. `npm test`
+  4. `mv node_modules/@vitejs /tmp/_v; env -u DATABASE_URL npm run build; mv /tmp/_v node_modules/@vitejs`
+
+  The build must be verified with devDependencies effectively absent, exactly as shown, because that
+  is how Railway installs — and that is precisely the class of failure that caused this bug.
+
+- **519 tests / 34 files is a FLOOR, not a target.** New tests raise both counts; a lower count
+  means something broke or an assertion was deleted.
+
+- **`deployment-config.test.ts` contains 15 `it` blocks, and 15 is the floor.** (The design document
+  states 21; that figure is wrong — trust the file.) Task 3.2 may rewrite exactly one of them in
+  place, *"runs the migration in the release phase"*, preserving and strengthening its intent. No
+  existing `it` may be deleted.
+
+- **Never commit to `master`.** It is the default branch and the repo auto-deploys from it on every
+  push. Create a branch for this spec and fix work, commit after each sub-task (each is a
+  commit-sized unit), and open a PR for review.
+
+- **There is no live Postgres** in the sandbox or in CI. The bug condition is reachable only through
+  the in-memory fake at `lib/pairing/__fixtures__/prismaFake.ts`; if that fake is not faithful,
+  every test in this plan is worthless. See the fidelity rules in task 1.

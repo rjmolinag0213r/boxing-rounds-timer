@@ -738,7 +738,9 @@ healthy client (`createPrismaFake()`) — then assert the same status and body a
 7. **Suite-wide**: 34 files / 519 tests still green, clean typecheck, successful devDependency-free
    build (3.1). New tests are additive; the *only* existing assertion that may be rewritten is
    `deployment-config.test.ts`'s *"runs the migration in the release phase"*, whose subject this fix
-   intentionally changes. Its `it` count stays 21 and its intent is preserved and strengthened.
+   intentionally changes. Its 15 existing `it` blocks are the floor — no existing `it` may be
+   deleted; task 3.2 rewrites exactly one of them in place, so the count does not drop and its
+   intent is preserved and strengthened.
 
 ### Unit Tests
 
