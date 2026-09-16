@@ -72,6 +72,11 @@ export function ServiceWorkerRegistrar(): null {
       .then((registration) => {
         if (cancelled) return
 
+        // Ask the browser to re-fetch `sw.js` now rather than on its own schedule (up to
+        // 24h). Without this, a deploy could go unnoticed for a day on an installed PWA,
+        // which is exactly how a stale shell survives a release.
+        registration.update().catch(() => {})
+
         // A version was already waiting when this page loaded.
         if (registration.waiting && container.controller) offerUpdate(registration.waiting)
 

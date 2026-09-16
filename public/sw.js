@@ -19,7 +19,16 @@
  * `activate`, so a version bump is what evicts stale HTML.
  */
 
-const VERSION = 'v1'
+/*
+ * Bump this on any deploy that changes the shell or the asset list.
+ *
+ * `activate` deletes every `boxing-timer-*` cache that is not the current one, so this
+ * constant is the ONLY thing that evicts stale HTML and chunks. Leaving it pinned meant a
+ * previously-installed worker kept serving the old app after a deploy — the bug this bump
+ * fixes. `ServiceWorkerRegistrar` additionally calls `registration.update()` on mount so a
+ * new version is discovered without waiting for the browser's own 24h check.
+ */
+const VERSION = 'v2'
 const CACHE = `boxing-timer-${VERSION}`
 
 /**
