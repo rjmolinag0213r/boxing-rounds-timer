@@ -1425,139 +1425,139 @@ Mobile and motion rules follow the existing conventions: every interactive eleme
 
 *A property is a characteristic or behavior that should hold true across all valid executions of a system — essentially, a formal statement about what the system should do. Properties serve as the bridge between human-readable specifications and machine-verifiable correctness guarantees.*
 
-> Requirement references are added in the requirements phase of this workflow, once `requirements.md` exists and each acceptance criterion has an identifier to cite.
+> Requirement references cite the acceptance criteria in `requirements.md`, which also carries the full property-to-criterion table in its Traceability section.
 
 ### Property 1: Generated codes obey the alphabet and length
 
 *For any* sequence of random bytes supplied to `generateCode`, the returned code has length exactly 8 and every character is a member of `PAIRING_ALPHABET`; in particular no returned code ever contains `0`, `1`, `I`, `L`, or `O`.
 
-**Validates: Requirements TBD**
+**Validates: Requirements 1.2, 1.3**
 
 ### Property 2: Code generation is uniform over the keyspace
 
 *For any* large sample of codes generated from a uniform byte source, the observed frequency of each of the 31 symbols at each of the 8 positions is within statistical tolerance of `1/31`, and no byte value in `[248, 255]` ever contributes a symbol. (Tests the rejection-sampling bound that makes the keyspace math in §1 valid; asserted as a bound on maximum positional deviation, not an exact equality.)
 
-**Validates: Requirements TBD**
+**Validates: Requirements 1.4, 1.5**
 
 ### Property 3: Distinct codes collide only at the expected rate
 
 *For any* set of `n` independently generated codes with `n` well below the birthday bound of `31^8`, all `n` codes are distinct.
 
-**Validates: Requirements TBD**
+**Validates: Requirements 1.6**
 
 ### Property 4: Normalization is idempotent and format-insensitive
 
 *For any* valid code `c`, and *for any* variation of `c` produced by changing letter case and inserting dashes or spaces at arbitrary positions, `normalizeCode` returns exactly `c`; and *for any* input `x` where `normalizeCode(x)` is non-null, `normalizeCode(normalizeCode(x)) === normalizeCode(x)`.
 
-**Validates: Requirements TBD**
+**Validates: Requirements 1.10, 1.11**
 
 ### Property 5: Normalization never repairs an excluded glyph
 
 *For any* string containing at least one of `O`, `I`, or `L`, `normalizeCode` returns `null` rather than mapping the glyph onto a valid symbol. (Guards against silently joining the wrong sync space.)
 
-**Validates: Requirements TBD**
+**Validates: Requirements 1.12**
 
 ### Property 6: Normalization is total
 
 *For any* string whatsoever — empty, whitespace-only, thousands of characters, arbitrary Unicode — `normalizeCode` returns either a valid 8-character code or `null`, and never throws.
 
-**Validates: Requirements TBD**
+**Validates: Requirements 1.13**
 
 ### Property 7: Expiry is a monotone step function of time
 
 *For any* `expiresAt` and *for any* pair of times `t1 <= t2`, if `isExpired(expiresAt, t1)` is true then `isExpired(expiresAt, t2)` is true; and `isExpired(expiresAt, t)` is true exactly when `t >= expiresAt`. A code, once expired, is never valid again.
 
-**Validates: Requirements TBD**
+**Validates: Requirements 2.3, 2.4**
 
 ### Property 8: A code is consumable at most once
 
 *For any* code and *for any* sequence of claim attempts against it — including attempts interleaved arbitrarily and issued concurrently — at most one attempt succeeds, and every subsequent attempt yields the failure outcome.
 
-**Validates: Requirements TBD**
+**Validates: Requirements 3.1, 3.2, 3.3**
 
 ### Property 9: Claim failures are indistinguishable
 
 *For any* failing claim, the HTTP status, response body, and response headers are byte-identical regardless of whether the code was absent, expired, already consumed, or syntactically malformed.
 
-**Validates: Requirements TBD**
+**Validates: Requirements 5.1, 5.2, 5.3**
 
 ### Property 10: Rate-limit accounting never exceeds its budget
 
 *For any* sequence of attempt timestamps and *for any* rule set, the number of attempts `evaluate` reports as allowed within any window of length `rule.windowMs` never exceeds `rule.max`; and adding an attempt can only ever change the verdict from allowed to denied, never the reverse, for a fixed `now`.
 
-**Validates: Requirements TBD**
+**Validates: Requirements 4.1, 4.2, 4.3, 4.7, 4.9**
 
 ### Property 11: Rate-limit capacity recovers after the window
 
 *For any* rule and *for any* set of attempts all older than `rule.windowMs` relative to `now`, `evaluate` reports allowed with `retryAfterSeconds === 0`. Denial is always temporary.
 
-**Validates: Requirements TBD**
+**Validates: Requirements 4.10**
 
 ### Property 12: Retry-After is a correct lower bound
 
 *For any* denied verdict, waiting `retryAfterSeconds` and re-evaluating with no new attempts yields an allowed verdict. The value never under-promises.
 
-**Validates: Requirements TBD**
+**Validates: Requirements 4.8**
 
 ### Property 13: Backoff is monotone and bounded
 
 *For any* consecutive-failure count `n`, `backoffMs(n)` is non-decreasing in `n` and never exceeds 4000ms, so backoff can neither be escaped by persistence nor become a self-inflicted denial of service.
 
-**Validates: Requirements TBD**
+**Validates: Requirements 4.12**
 
 ### Property 14: Pairing merges to the union, idempotently
 
 *For any* two devices holding local workout sets `A` and `B` with client-generated ids, after pairing and reconcile both devices hold exactly `A ∪ B` keyed by id; and running the reconcile any number of additional times leaves both devices unchanged.
 
-**Validates: Requirements TBD**
+**Validates: Requirements 9.4, 9.5**
 
 ### Property 15: Sync spaces are isolated
 
 *For any* two distinct sync spaces and *for any* record written while scoped to the first, a read scoped to the second never returns that record — and an unpaired device's records are never visible to any space.
 
-**Validates: Requirements TBD**
+**Validates: Requirements 14.1, 14.2, 14.6**
 
 ### Property 16: OAuth takes precedence deterministically
 
 *For any* combination of OAuth session presence and device-cookie presence, `resolveIdentity` returns `source: 'oauth'` whenever an OAuth session resolves, `source: 'paired'` only when there is no OAuth session and the cookie matches a live device, and `anonymous` otherwise. The result is a pure function of those two inputs.
 
-**Validates: Requirements TBD**
+**Validates: Requirements 7.2, 7.3, 7.4**
 
 ### Property 17: A database fault never resolves as anonymous
 
 *For any* connectivity error raised while resolving identity, `resolveIdentity` returns `kind: 'database-error'` and never `kind: 'anonymous'`, so no data route can answer `401` for a database outage.
 
-**Validates: Requirements TBD**
+**Validates: Requirements 7.6, 13.4**
 
 ### Property 18: Revocation is immediately effective
 
 *For any* device token, once its `PairedDevice` row is deleted, every subsequent `resolveIdentity` carrying that token returns `anonymous`.
 
-**Validates: Requirements TBD**
+**Validates: Requirements 10.6, 14.5**
 
 ### Property 19: Token hashing is deterministic and one-way in storage
 
 *For any* generated device token, the stored hash is 64 lowercase hex characters, is a deterministic function of the token, and the raw token appears in no persisted row.
 
-**Validates: Requirements TBD**
+**Validates: Requirements 6.2, 6.3**
 
 ### Property 20: Issued cookies always carry their security attributes
 
 *For any* response that issues a device token, the `Set-Cookie` header has `HttpOnly`, `SameSite=Lax`, `Path=/`, and — whenever `NODE_ENV === 'production'` — `Secure`.
 
-**Validates: Requirements TBD**
+**Validates: Requirements 6.5, 6.6**
 
 ### Property 21: Rotation preserves records and revokes devices
 
 *For any* sync space with records `R` and devices `D`, after rotation the caller's new space holds exactly `R`, every device in `D` is revoked, and every previously live code for the old space is dead.
 
-**Validates: Requirements TBD**
+**Validates: Requirements 10.9, 10.10, 10.11**
 
 ### Property 22: Code formatting round-trips
 
 *For any* valid code `c`, `normalizeCode(formatCode(c)) === c`. The displayed grouping never changes the code's meaning.
 
-**Validates: Requirements TBD**
+**Validates: Requirements 1.15**
 
 ## Testing Strategy
 
