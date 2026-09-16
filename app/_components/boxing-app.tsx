@@ -49,6 +49,7 @@ import {
   DrawerTrigger,
 } from '@/components/ui/drawer'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { ThemeToggle } from '@/components/theme-toggle'
 import BoxingTimer from '@/app/_components/boxing-timer'
 import HistoryView from '@/app/_components/history-view'
 import SoundSettings from '@/app/_components/sound-settings'
@@ -110,6 +111,9 @@ export default function BoxingApp() {
           </div>
 
           <div className="flex items-center gap-2">
+            {/* Light / dark switch. The light token set was previously unreachable. */}
+            <ThemeToggle />
+
             <Button
               variant="ghost"
               size="sm"
