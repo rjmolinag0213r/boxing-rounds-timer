@@ -29,6 +29,14 @@
  * surface, so it lives beside Sounds in the header rather than becoming a fourth tab — the tab
  * count stays at exactly three (requirements 12.1, 12.2, 12.3).
  *
+ * **The chrome pays back the safe-area insets.** `viewportFit: 'cover'` in `app/layout.tsx`
+ * lets the window paint under the notch and the home indicator, which means anything pinned to
+ * an edge must add the inset back itself — see the `pt-safe` / `px-safe` note on the header.
+ *
+ * **The introductory copy is idle-only.** The timer reports when a workout is on screen and
+ * the hero and the footer tip step out of the way; neither is worth any of a 390 px-wide
+ * viewport once the user is mid-round.
+ *
  * Requirements: 10.1, 10.2, 10.6, 10.7, 10.8, 10.11, 12.1, 12.2, 12.3, 12.18
  */
 
@@ -95,6 +103,12 @@ const TAB_TRIGGER_CLASS =
 export default function BoxingApp() {
   const [tab, setTab] = useState<AppTab>('timer')
   const [soundSettingsOpen, setSoundSettingsOpen] = useState<boolean>(false)
+  /**
+   * True from the moment a workout starts until the timer is back to idle. The timer reports
+   * it (see `BoxingTimerProps.onActivityChange`); the shell uses it to withdraw its own
+   * introductory copy, which has no value once the user is mid-round.
+   */
+  const [workoutEngaged, setWorkoutEngaged] = useState<boolean>(false)
   const [syncSettingsOpen, setSyncSettingsOpen] = useState<boolean>(false)
   const { muted, toggleMuted } = useSoundSettings()
   const isMobile = useIsMobileViewport()
@@ -131,16 +145,29 @@ export default function BoxingApp() {
 
   return (
     <div className="min-h-screen w-full bg-background text-foreground">
-      <header className="sticky top-0 z-30 w-full backdrop-blur bg-background/70 border-b border-border/40">
-        <div className="mx-auto max-w-[1200px] px-4 sm:px-6 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center">
+      {/*
+        `pt-safe` / `px-safe` (app/globals.css) pay back the insets that `viewportFit: 'cover'`
+        in app/layout.tsx deliberately paints under. Without them, on any notched iPhone this
+        sticky header started at y=0 *behind* the status bar: the title overlapped the system
+        clock and the right-hand controls — theme, mute, Sounds, Sync — sat under the Dynamic
+        Island, which made sound settings and device pairing unreachable on the exact device
+        the app is used on. They are padding, so the row below keeps its full 56 px height
+        rather than being squeezed; `px-safe` covers the landscape insets.
+      */}
+      <header className="sticky top-0 z-30 w-full backdrop-blur bg-background/70 border-b border-border/40 pt-safe px-safe">
+        <div className="mx-auto max-w-[1200px] px-4 sm:px-6 h-14 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 min-w-0">
+            <div className="w-8 h-8 rounded-md bg-primary/10 flex items-center justify-center flex-shrink-0">
               <Bell className="w-4 h-4 text-primary" aria-hidden="true" />
             </div>
-            <span className="font-display font-semibold tracking-tight">Boxing Timer</span>
+            <span className="font-display font-semibold tracking-tight truncate">
+              Boxing Timer
+            </span>
           </div>
 
-          <div className="flex items-center gap-2">
+          {/* gap-1 below 640 px: four icon-only controls plus the brand have to clear 44 px
+              each inside 390 px, and gap-2 was the difference. */}
+          <div className="flex items-center gap-1 sm:gap-2 flex-shrink-0">
             {/* Light / dark switch. The light token set was previously unreachable. */}
             <ThemeToggle />
 
@@ -220,54 +247,71 @@ export default function BoxingApp() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-[1200px] px-4 sm:px-6 py-6 sm:py-10">
-        <div className="text-center mb-6 sm:mb-8">
-          <h1 className="font-display text-3xl sm:text-4xl font-semibold tracking-tight">
-            Train by the <span className="text-primary">bell</span>.
-          </h1>
-          <p className="mt-2 text-sm sm:text-base text-muted-foreground">
-            Configure rounds and rests, build your own workouts, and keep every session.
-          </p>
-        </div>
-
-        <Tabs value={tab} onValueChange={(next) => setTab(next as AppTab)}>
-          <TabsList aria-label="Sections" className="mb-5 flex h-auto w-full gap-1 p-1">
-            {TABS.map(({ value, label, icon: Icon }) => (
-              <TabsTrigger key={value} value={value} className={TAB_TRIGGER_CLASS}>
-                <Icon className="w-4 h-4" aria-hidden="true" />
-                {label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-
+      {/*
+        The safe-area padding is on `main` and the layout padding on the div inside it, never
+        both on one element: `px-safe` and `px-4` set the same CSS property, so on a device with
+        no insets whichever Tailwind emitted last would win and the other would vanish.
+      */}
+      <main className="px-safe pb-safe">
+        <div className="mx-auto max-w-[1200px] px-4 sm:px-6 py-4 sm:py-10">
           {/*
-            `forceMount` with an explicit `hidden` keeps the running timer — and the sounds it
-            has pre-scheduled on the audio clock — alive while another tab is on screen. The
-            explicit `hidden` is required: `forceMount` alone would leave the panel visible.
+            The hero is a first-visit introduction, so it is shown only while nothing is running.
+            Mid-workout it is ~110 px of a 390 px-wide phone spent on copy the user has already
+            read, directly above the two numbers they are actually looking for.
           */}
-          <TabsContent value="timer" forceMount hidden={tab !== 'timer'} className="mt-0">
-            <BoxingTimer />
-          </TabsContent>
-
-          <TabsContent value="builder" className="mt-0">
-            <div className="mx-auto max-w-2xl">
-              <WorkoutBuilder onSaved={handleWorkoutSaved} />
+          {!workoutEngaged && (
+            <div className="text-center mb-5 sm:mb-8">
+              <h1 className="font-display text-3xl sm:text-4xl font-semibold tracking-tight">
+                Train by the <span className="text-primary">bell</span>.
+              </h1>
+              <p className="mt-2 text-sm sm:text-base text-muted-foreground">
+                Configure rounds and rests, build your own workouts, and keep every session.
+              </p>
             </div>
-          </TabsContent>
+          )}
 
-          <TabsContent value="history" className="mt-0">
-            <div className="mx-auto max-w-2xl">
-              <HistoryView />
-            </div>
-          </TabsContent>
-        </Tabs>
+          <Tabs value={tab} onValueChange={(next) => setTab(next as AppTab)}>
+            <TabsList aria-label="Sections" className="mb-4 flex h-auto w-full gap-1 p-1">
+              {TABS.map(({ value, label, icon: Icon }) => (
+                <TabsTrigger key={value} value={value} className={TAB_TRIGGER_CLASS}>
+                  <Icon className="w-4 h-4" aria-hidden="true" />
+                  {label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
 
-        <footer className="mt-10 text-center text-xs text-muted-foreground">
-          <p>
-            Tip: audio unlocks after you press Start. The countdown stays accurate even if you
-            switch apps.
-          </p>
-        </footer>
+            {/*
+              `forceMount` with an explicit `hidden` keeps the running timer — and the sounds it
+              has pre-scheduled on the audio clock — alive while another tab is on screen. The
+              explicit `hidden` is required: `forceMount` alone would leave the panel visible.
+            */}
+            <TabsContent value="timer" forceMount hidden={tab !== 'timer'} className="mt-0">
+              <BoxingTimer onActivityChange={setWorkoutEngaged} />
+            </TabsContent>
+
+            <TabsContent value="builder" className="mt-0">
+              <div className="mx-auto max-w-2xl">
+                <WorkoutBuilder onSaved={handleWorkoutSaved} />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="history" className="mt-0">
+              <div className="mx-auto max-w-2xl">
+                <HistoryView />
+              </div>
+            </TabsContent>
+          </Tabs>
+
+          {/* Same reasoning as the hero: a first-run tip, not workout furniture. */}
+          {!workoutEngaged && (
+            <footer className="mt-8 text-center text-xs text-muted-foreground">
+              <p>
+                Tip: audio unlocks after you press Start. The countdown stays accurate even if you
+                switch apps.
+              </p>
+            </footer>
+          )}
+        </div>
       </main>
     </div>
   )

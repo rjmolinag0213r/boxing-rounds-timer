@@ -207,6 +207,17 @@ const VIEWS: ReadonlyArray<{ name: string; mount: () => Promise<RenderResult> }>
 /* Touch targets (requirement 10.3)                                            */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * The control set is now phase-driven, so the 44 px assertions are made in the phase where each
+ * control exists.
+ *
+ * This test previously asserted the size of `stop` and `reset` while the engine was idle, which
+ * pinned the very thing being fixed: `Stop` rendered disabled before there was a run to stop,
+ * and `Reset` rendered with nothing to reset, so a 390 px viewport carried four stacked buttons
+ * — two of them inert. The size requirement (10.3) is unchanged and still asserted for every
+ * control; only the phase each assertion is made in has moved. The absence of the dead controls
+ * is asserted in `timer-hierarchy.test.tsx`.
+ */
 describe('timer controls meet the 44 px touch target', () => {
   beforeEach(() => {
     window.localStorage.clear()
@@ -214,26 +225,36 @@ describe('timer controls meet the 44 px touch target', () => {
     stubViewport()
   })
 
-  it.each([['start workout'], ['stop'], ['reset']])(
-    'gives the %s control at least 44 × 44 CSS pixels',
+  /** Asserts requirement 10.3 for one control. */
+  const expectTouchTarget = (control: HTMLElement): void => {
+    expect(minSizePx(control, 'h')).toBeGreaterThanOrEqual(MINIMUM_TOUCH_TARGET_PX)
+    expect(minSizePx(control, 'w')).toBeGreaterThanOrEqual(MINIMUM_TOUCH_TARGET_PX)
+  }
+
+  it('gives the start control at least 44 × 44 CSS pixels while idle', () => {
+    render(<BoxingTimer />)
+
+    expectTouchTarget(screen.getByRole('button', { name: /^start workout$/i }))
+  })
+
+  it.each([['pause'], ['stop']])(
+    'gives the %s control at least 44 × 44 CSS pixels once the workout is running',
     async (name) => {
       render(<BoxingTimer />)
 
-      const control = screen.getByRole('button', { name: new RegExp(`^${name}$`, 'i') })
+      screen.getByRole('button', { name: /start workout/i }).click()
 
-      expect(minSizePx(control, 'h')).toBeGreaterThanOrEqual(MINIMUM_TOUCH_TARGET_PX)
-      expect(minSizePx(control, 'w')).toBeGreaterThanOrEqual(MINIMUM_TOUCH_TARGET_PX)
+      expectTouchTarget(await screen.findByRole('button', { name: new RegExp(`^${name}$`, 'i') }))
     }
   )
 
-  it('gives Pause at least 44 × 44 CSS pixels once the workout is running', async () => {
+  it('gives the resume control at least 44 × 44 CSS pixels once the workout is paused', async () => {
     render(<BoxingTimer />)
 
     screen.getByRole('button', { name: /start workout/i }).click()
+    ;(await screen.findByRole('button', { name: /^pause$/i })).click()
 
-    const pause = await screen.findByRole('button', { name: /^pause$/i })
-    expect(minSizePx(pause, 'h')).toBeGreaterThanOrEqual(MINIMUM_TOUCH_TARGET_PX)
-    expect(minSizePx(pause, 'w')).toBeGreaterThanOrEqual(MINIMUM_TOUCH_TARGET_PX)
+    expectTouchTarget(await screen.findByRole('button', { name: /^resume$/i }))
   })
 })
 

@@ -15,6 +15,20 @@
  * a bottom-sheet drawer (requirement 10.9). Every framer-motion duration is capped under
  * `prefers-reduced-motion: reduce` (requirement 10.7).
  *
+ * **The panel has an active state and an idle state**, and they are not the same layout.
+ * This is a timer used mid-workout, from three to six feet away, by someone moving and
+ * possibly gloved, who looks at it for well under a second. While `isActive` the phase
+ * banner — a filled block of the phase colour carrying the phase word and the round counter —
+ * is the loudest element after the digits, the countdown steps up a size, the phase word is
+ * not repeated under it, and the configuration affordance is withdrawn because every field in
+ * it is disabled during a run. While idle the banner is replaced by the configuration summary
+ * the user actually needs before starting, and the digits preview the round length.
+ *
+ * Every control is rendered only in the phases where it does something: `Stop` no longer
+ * renders greyed-out before a run exists, and `Reset` appears once there is a finished run to
+ * clear. The phase word appears exactly once anywhere in the view — the old layout announced
+ * "ready" three times while showing the round number once, in the smallest type on screen.
+ *
  * This component holds **no countdown state**. Every displayed timing value — the
  * countdown digits, the phase label, the round number and the progress ring — is derived
  * from the `TimerSnapshot` produced by `useTimerEngine`, which computes it purely from
@@ -55,6 +69,7 @@ import {
   RotateCcw,
   Bell,
   BellRing,
+  ChevronDown,
   Coffee,
   Info,
   Settings2,
@@ -63,11 +78,15 @@ import {
   Dumbbell,
   ListChecks,
   Check,
-  Trophy,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible'
 import {
   Drawer,
   DrawerContent,
@@ -103,6 +122,19 @@ import {
  */
 export const TOUCH_TARGET_CLASS = 'min-h-[44px] min-w-[44px]'
 
+export type BoxingTimerProps = {
+  /**
+   * Called whenever the timer moves between "nothing is happening" and "a workout is on
+   * screen" (running, paused, or just finished).
+   *
+   * The shell owns the page's introductory copy, which has zero value once the user is
+   * mid-round, so it needs to know. This is a notification, not a control: the timer's own
+   * layout is derived from the engine status directly, so the prop staying unwired (as it is
+   * in every unit test) changes nothing about this component.
+   */
+  onActivityChange?: (engaged: boolean) => void
+}
+
 /** The phases the view paints. `paused` is rendered with its underlying segment's accent. */
 type VisualPhase = 'idle' | 'prep' | 'round' | 'rest' | 'finished'
 
@@ -116,53 +148,70 @@ type PhaseAccent = {
   ring: string
   /** The page background tint gradient's `from-*` stop. */
   tint: string
+  /**
+   * The filled phase banner shown while a workout is on screen: a solid block of the phase
+   * colour carrying the phase word and the round counter. This is the "readable across the
+   * room, in peripheral vision, without reading text" signal — a thin ring outline is not.
+   * Both halves of each pair are tokens, so the fill and the type on it are guaranteed to
+   * clear 4.5:1 in light *and* dark mode (`app/theme-tokens.test.ts` proves the ratios).
+   */
+  band: string
 }
 
 /**
- * Per-phase accents (requirement 9.11). `round` is the brand red (`--primary`, hue 0) and
- * `rest` is a cool green ~160° away in hue, so the "am I working or recovering?" glance is
- * unmistakable mid-workout — and stays legible for colour-vision-deficient users. `prep`
- * is a muted slate ("about to start") and `finished` is a celebratory amber.
+ * Per-phase accents (requirement 9.11). `round` is the brand red (`--primary` / `--work`,
+ * hue 0) and `rest` is a green ~160° away in hue, so the "am I working or recovering?" glance
+ * is unmistakable mid-workout — and stays legible for colour-vision-deficient users. `prep`
+ * is a neutral surface ("about to start") and `finished` is a celebratory amber.
  *
- * Red is never hardcoded here: `text-primary`, `stroke-primary` and `from-primary/10`
- * resolve through the token system, so the light/dark blocks in `globals.css` are the
- * single source of truth (requirements 9.7, 9.12, 9.14).
+ * Colour is never hardcoded for the two phases that matter mid-workout: `text-primary`,
+ * `stroke-primary`, `bg-work`, `text-rest` and `bg-rest` all resolve through the token system,
+ * so the light/dark blocks in `globals.css` are the single source of truth (requirements 9.7,
+ * 9.12, 9.14). `rest` moved off the literal `emerald-500` for exactly that reason: at 12 px
+ * and as a ring stroke it was 2.1:1 on white, below even the 3:1 that large text and UI
+ * components require.
  */
 const PHASE_ACCENTS: Record<VisualPhase, PhaseAccent> = {
   idle: {
-    text: 'text-muted-foreground',
+    text: 'text-foreground',
     smallText: 'text-muted-foreground',
-    ring: 'stroke-muted-foreground/50',
+    // Not `/50`: at half opacity this stroke measured 1.6:1 on white, invisible in daylight.
+    ring: 'stroke-muted-foreground',
     tint: 'from-transparent to-transparent',
+    band: 'bg-muted text-foreground',
   },
   prep: {
-    text: 'text-slate-500 dark:text-slate-300',
-    smallText: 'text-slate-600 dark:text-slate-300',
-    ring: 'stroke-slate-400',
-    tint: 'from-slate-500/10 via-transparent to-transparent',
+    text: 'text-foreground',
+    smallText: 'text-muted-foreground',
+    ring: 'stroke-foreground/70',
+    tint: 'from-foreground/5 via-transparent to-transparent',
+    band: 'bg-foreground text-background',
   },
   round: {
     text: 'text-primary',
     smallText: 'text-accent-foreground',
     ring: 'stroke-primary',
     tint: 'from-primary/10 via-transparent to-transparent',
+    band: 'bg-work text-work-foreground',
   },
   rest: {
-    text: 'text-emerald-500 dark:text-emerald-400',
-    smallText: 'text-emerald-700 dark:text-emerald-400',
-    ring: 'stroke-emerald-500',
-    tint: 'from-emerald-500/10 via-transparent to-transparent',
+    text: 'text-rest',
+    smallText: 'text-rest',
+    ring: 'stroke-rest',
+    tint: 'from-rest/10 via-transparent to-transparent',
+    band: 'bg-rest text-rest-foreground',
   },
   finished: {
     text: 'text-amber-500 dark:text-amber-400',
     smallText: 'text-amber-700 dark:text-amber-400',
     ring: 'stroke-amber-500',
     tint: 'from-amber-500/10 via-transparent to-transparent',
+    band: 'bg-amber-600 text-white dark:bg-amber-400 dark:text-amber-950',
   },
 }
 
 /** The rest accent applied to the rest-duration field's icon, matching `PHASE_ACCENTS.rest`. */
-const REST_ICON_CLASS = 'text-emerald-500 dark:text-emerald-400'
+const REST_ICON_CLASS = 'text-rest'
 
 /** Stable identity for a segment, used as the sound engine's de-duplication key. */
 const segmentKeyOf = (segment: Segment): string => `${segment.kind}#${segment.index}`
@@ -212,7 +261,7 @@ function postPhaseNotification(kind: 'round' | 'rest', round: number, totalRound
 const specKeyOf = (spec: WorkoutSpec): string =>
   `${spec.prepSeconds}|${spec.rounds}|${spec.roundSeconds}|${spec.restSeconds}`
 
-export default function BoxingTimer() {
+export default function BoxingTimer({ onActivityChange }: BoxingTimerProps = {}) {
   // Configuration
   const [roundMinutes, setRoundMinutes] = useState<number>(3)
   const [roundSeconds, setRoundSeconds] = useState<number>(0)
@@ -242,6 +291,12 @@ export default function BoxingTimer() {
   /** Below 640 px the round configuration lives in a bottom sheet (requirement 10.9). */
   const isMobile = useIsMobileViewport()
   const [settingsOpen, setSettingsOpen] = useState<boolean>(false)
+  /**
+   * The background-audio limitation (requirement 4.6) is disclosed on demand rather than
+   * permanently. The text is honest and worth reading once; it is not worth 96 px of a 390 px
+   * viewport on every glance mid-workout, which is where it used to sit.
+   */
+  const [audioNoteOpen, setAudioNoteOpen] = useState<boolean>(false)
 
   // Presets — the shared library, so the Builder tab and this panel cannot diverge.
   const { workouts: presets, saveWorkout, deleteWorkout } = useWorkoutLibrary()
@@ -384,7 +439,20 @@ export default function BoxingTimer() {
   } = useTimerEngine({ spec, onSoundEvent: handleSoundEvent })
 
   const isRunning = status === 'running'
+  /**
+   * A workout is on screen — running, or paused mid-run. This is the single switch behind the
+   * active/idle distinction: while it is true the countdown and the round counter are the two
+   * loudest things in the view, the configuration affordances step back, and no control is
+   * rendered that cannot be used.
+   */
   const isActive = status === 'running' || status === 'paused'
+  const isFinished = status === 'finished'
+
+  /** The shell hides its introductory copy while anything is happening (see the prop's doc). */
+  const engaged = isActive || isFinished
+  useEffect(() => {
+    onActivityChange?.(engaged)
+  }, [engaged, onActivityChange])
 
   // A finished workout keeps its plan, so editing the configuration afterwards has to
   // return the engine to `idle` before the new spec can be adopted.
@@ -488,35 +556,46 @@ export default function BoxingTimer() {
 
   const progressPct = snapshot.progressPct
 
-  const phaseLabel = useMemo(() => {
-    if (snapshot.phase === 'paused') return 'PAUSED'
-    if (visualPhase === 'prep') return 'GET READY'
-    if (visualPhase === 'round') return `ROUND ${snapshot.currentRound}`
-    if (visualPhase === 'rest') return 'REST'
-    if (visualPhase === 'finished') return 'FINISHED'
-    return 'READY'
-  }, [snapshot.phase, snapshot.currentRound, visualPhase])
-
   const accent = PHASE_ACCENTS[visualPhase]
 
   /** The countdown accent — large type, so the full-strength red is safe here. */
   const phaseColorClass = accent.text
 
-  /** The phase badge accent — `text-xs`, so red drops to `--accent-foreground`. */
-  const phaseBadgeColorClass = accent.smallText
-
   const ringColorClass = accent.ring
 
   const bgTintClass = accent.tint
 
+  /**
+   * The one word for the current phase.
+   *
+   * It is rendered exactly once: inside the phase banner while a workout is on screen, and
+   * under the countdown otherwise. Previously the same state was announced three times over —
+   * a `READY` badge, `READY WHEN YOU ARE` inside the ring, and the `Start Workout` button —
+   * while the round number, the only thing on screen that could not be inferred, was the
+   * smallest text in the view.
+   *
+   * The idle wording labels what the ring is previewing (the configured round length) rather
+   * than restating that nothing is running, which the Start button already says.
+   */
   const phaseCaption = useMemo(() => {
     if (snapshot.phase === 'paused') return 'Paused'
-    if (visualPhase === 'idle') return 'Ready when you are'
-    if (visualPhase === 'prep') return 'Starting soon'
+    if (visualPhase === 'idle') return 'Round length'
+    if (visualPhase === 'prep') return 'Get ready'
     if (visualPhase === 'round') return 'Work'
     if (visualPhase === 'rest') return 'Recover'
     return 'All rounds done'
   }, [snapshot.phase, visualPhase])
+
+  /** The phase's glyph, so the banner is not colour-only for the colour-blind. */
+  const PhaseIcon = useMemo(() => {
+    if (snapshot.phase === 'paused') return Pause
+    if (visualPhase === 'rest') return Coffee
+    if (visualPhase === 'prep') return Dumbbell
+    return Bell
+  }, [snapshot.phase, visualPhase])
+
+  /** Clamped for the last segment, where the engine's round index runs one past the plan. */
+  const displayRound = Math.min(snapshot.currentRound, snapshot.totalRounds)
 
   /* ---------------------------------------------------------------------- */
   /* Controls                                                               */
@@ -662,9 +741,11 @@ export default function BoxingTimer() {
   const clamp = (v: number, min: number, max: number) =>
     Math.min(max, Math.max(min, Number.isFinite(v) ? Math.floor(v) : min))
 
-  // SVG ring geometry
+  // SVG ring geometry. The viewBox is fixed; the rendered box is fluid (see the ring markup),
+  // so this is a coordinate space rather than a pixel size. The stroke went from 10 to 16
+  // because at arm's length on a phone the thinner arc read as a hairline, not as progress.
   const size = 320
-  const stroke = 10
+  const stroke = 16
   const radius = (size - stroke) / 2
   const circumference = 2 * Math.PI * radius
   const dashOffset = circumference * (1 - progressPct / 100)
@@ -743,51 +824,73 @@ export default function BoxingTimer() {
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_360px] gap-6">
         {/* Timer panel */}
         <Card className="relative p-4 sm:p-6 lg:p-10 bg-card/60 backdrop-blur shadow-lg overflow-hidden">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-2">
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={phaseLabel}
-                  initial={{ opacity: 0, y: motionOffset(-4, reducedMotion) }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: motionOffset(4, reducedMotion) }}
-                  transition={{ duration: motionDurationSeconds(0.25, reducedMotion) }}
-                  className={`inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold tracking-widest ${phaseBadgeColorClass} bg-foreground/5`}
-                >
-                  {snapshot.phase === 'paused' ? (
-                    <Pause className="w-3.5 h-3.5" />
-                  ) : (
-                    <>
-                      {visualPhase === 'round' && <Bell className="w-3.5 h-3.5" />}
-                      {visualPhase === 'rest' && <Coffee className="w-3.5 h-3.5" />}
-                      {visualPhase === 'finished' && <Trophy className="w-3.5 h-3.5" />}
-                      {visualPhase === 'prep' && <Dumbbell className="w-3.5 h-3.5" />}
-                      {visualPhase === 'idle' && <Dumbbell className="w-3.5 h-3.5" />}
-                    </>
-                  )}
-                  <span>{phaseLabel}</span>
-                </motion.div>
-              </AnimatePresence>
-            </div>
-            <div className="text-xs sm:text-sm text-muted-foreground font-mono tabular-nums">
-              Round{' '}
-              <span className="text-foreground font-semibold">
-                {Math.min(snapshot.currentRound, snapshot.totalRounds)}
-              </span>{' '}
-              / {snapshot.totalRounds}
-            </div>
-          </div>
+          {isActive ? (
+            /*
+              The phase banner: the whole reason this view has an active state.
+              A filled block of the phase colour, the phase word, and the round counter at a
+              size that survives a half-second glance from three feet away. The two things a
+              boxer needs mid-round are the time remaining and which round they are in; the
+              round used to be 11 px of grey in a corner.
 
-          {/* Circular timer */}
-          <div className="flex items-center justify-center py-4">
-            <div className="relative" style={{ width: size, height: size, maxWidth: '100%' }}>
+              `role="status"` announces the phase change to a screen reader once, from the same
+              markup the sighted user reads — the countdown itself stays `aria-live="off"`
+              because a per-second announcement is unusable.
+            */
+            <div
+              role="status"
+              aria-live="polite"
+              className={`mb-4 flex items-center justify-between gap-3 rounded-xl px-4 py-3 ${accent.band} shadow-sm transition-colors duration-500 motion-reduce:transition-none`}
+            >
+              <span className="flex items-center gap-2 text-lg sm:text-xl font-bold uppercase tracking-wider">
+                <PhaseIcon className="w-5 h-5 flex-shrink-0" aria-hidden="true" />
+                {phaseCaption}
+              </span>
+              <span className="font-mono font-semibold tabular-nums whitespace-nowrap text-sm sm:text-base">
+                Round{' '}
+                <span className="text-xl sm:text-2xl font-bold">{displayRound}</span>
+                {' / '}
+                {snapshot.totalRounds}
+              </span>
+            </div>
+          ) : (
+            /*
+              Idle and finished. No `READY` badge: the Start button already says the workout is
+              not running. What the user cannot otherwise see on a phone — the configuration
+              behind the bottom sheet — goes here instead.
+            */
+            <div className="mb-4 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs sm:text-sm text-muted-foreground font-mono tabular-nums">
+              <span>
+                {totalRounds} × {formatSeconds(roundTotal)}
+              </span>
+              <span aria-hidden="true">·</span>
+              <span>rest {formatSeconds(restTotal)}</span>
+              {/* The total is in the Settings panel from 640 px up; below that the panel is a
+                  drawer, so this is the only place a phone shows it. */}
+              <span className="sm:hidden">
+                · total{' '}
+                {formatSeconds(
+                  Math.max(0, prepSeconds ?? 0) +
+                    totalRounds * roundTotal +
+                    Math.max(0, totalRounds - 1) * restTotal
+                )}
+              </span>
+            </div>
+          )}
+
+          {/*
+            Circular timer. The box is fluid rather than a fixed 320 px square: on a 390 px
+            phone the fixed size left the digits floating in a large empty disc, so the ring
+            now shrinks with the viewport while the digits grow into the space it frees.
+          */}
+          <div className="flex items-center justify-center py-1 sm:py-4">
+            <div className="relative aspect-square w-full max-w-[248px] sm:max-w-[300px] lg:max-w-[320px]">
               <svg viewBox={`0 0 ${size} ${size}`} className="w-full h-full -rotate-90">
                 <circle
                   cx={size / 2}
                   cy={size / 2}
                   r={radius}
                   strokeWidth={stroke}
-                  className="stroke-foreground/10"
+                  className="stroke-foreground/15"
                   fill="none"
                 />
                 <motion.circle
@@ -806,39 +909,55 @@ export default function BoxingTimer() {
                   }}
                 />
               </svg>
-              <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <div className="absolute inset-0 flex flex-col items-center justify-center px-2">
                 {/*
                   Requirement 10.5: monospaced with tabular numerals so the digits never shift
-                  width, and a size that steps up across the breakpoints — text-5xl below
-                  640 px, text-8xl from 1024 px.
+                  width, and a size that steps up across the breakpoints. While a workout is on
+                  screen every step goes up one notch, filling the space the removed caption and
+                  the smaller ring gave back.
                 */}
                 <div
-                  className={`font-mono font-semibold tabular-nums tracking-tight ${phaseColorClass} text-5xl sm:text-6xl lg:text-8xl`}
+                  className={`font-mono font-semibold tabular-nums tracking-tight ${phaseColorClass} ${
+                    isActive ? 'text-6xl sm:text-7xl lg:text-8xl' : 'text-5xl sm:text-6xl lg:text-8xl'
+                  }`}
                   role="timer"
                   aria-live="off"
                 >
                   {formatSeconds(displaySeconds)}
                 </div>
-                <div className="mt-2 text-xs uppercase tracking-[0.25em] text-muted-foreground">
-                  {phaseCaption}
-                </div>
+                {/*
+                  The phase word lives in the banner while a workout is on screen, so repeating
+                  it here would put the same word on screen twice. Idle and finished have no
+                  banner, so this is where it goes.
+                */}
+                {!isActive && (
+                  <div className="mt-2 text-xs uppercase tracking-[0.2em] text-muted-foreground text-center">
+                    {phaseCaption}
+                  </div>
+                )}
               </div>
             </div>
           </div>
 
           {/*
-            Controls (requirements 10.3, 10.4). Below 640 px this is a column: the primary
-            action fills the container width on its own row, with the secondary controls beneath
-            it. From 640 px up the three sit on one centred row.
+            Controls (requirements 10.3, 10.4). The set follows the phase, so no control is
+            rendered that cannot be used: Start alone when idle; Pause and Stop while running;
+            Resume and Stop while paused; Start and Reset once the workout is done. `Stop` used
+            to render greyed-out before anything was running, which reads as a broken button,
+            and four stacked buttons did not fit a 390 px viewport without pushing the countdown
+            off screen.
+
+            Below 640 px they share one row and split the width; from 640 px up they take their
+            intrinsic widths on a centred row.
           */}
-          <div className="mt-6 flex flex-col items-stretch gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-center">
+          <div className="mt-5 flex flex-row items-stretch gap-3 sm:flex-wrap sm:items-center sm:justify-center">
             {!isRunning ? (
               // The stock default variant supplies bg-primary / text-primary-foreground
               // (requirement 9.8), so no color classes are set here.
               <Button
                 size="lg"
                 onClick={handleStart}
-                className={`w-full gap-2 px-6 shadow-md sm:w-auto ${TOUCH_TARGET_CLASS}`}
+                className={`w-full flex-1 gap-2 px-6 shadow-md sm:w-auto sm:flex-none ${TOUCH_TARGET_CLASS}`}
               >
                 <Play className="w-4 h-4" />
                 {status === 'paused' ? 'Resume' : 'Start Workout'}
@@ -848,38 +967,47 @@ export default function BoxingTimer() {
                 size="lg"
                 onClick={handlePause}
                 variant="secondary"
-                className={`w-full gap-2 px-6 shadow-md sm:w-auto ${TOUCH_TARGET_CLASS}`}
+                className={`w-full flex-1 gap-2 px-6 shadow-md sm:w-auto sm:flex-none ${TOUCH_TARGET_CLASS}`}
               >
                 <Pause className="w-4 h-4" />
                 Pause
               </Button>
             )}
 
-            <div className="flex items-center justify-center gap-3 sm:contents">
+            {/* Only ever enabled — so only ever rendered — while there is a run to end. */}
+            {isActive && (
               <Button
                 size="lg"
                 variant="outline"
                 onClick={handleStop}
-                className={`flex-1 gap-2 px-6 sm:flex-none ${TOUCH_TARGET_CLASS}`}
-                disabled={status === 'idle'}
+                className={`w-full flex-1 gap-2 px-6 sm:w-auto sm:flex-none ${TOUCH_TARGET_CLASS}`}
               >
                 <Square className="w-4 h-4" />
                 Stop
               </Button>
+            )}
+
+            {/* A finished run is the one state Reset has anything to clear. */}
+            {isFinished && (
               <Button
                 size="lg"
                 variant="ghost"
                 onClick={handleReset}
-                className={`flex-1 gap-2 sm:flex-none ${TOUCH_TARGET_CLASS}`}
+                className={`w-full flex-1 gap-2 sm:w-auto sm:flex-none ${TOUCH_TARGET_CLASS}`}
               >
                 <RotateCcw className="w-4 h-4" />
                 Reset
               </Button>
-            </div>
+            )}
           </div>
 
-          {/* Below 640 px the configuration is a bottom sheet, not a side panel (req 10.9) */}
-          {isMobile && (
+          {/*
+            Below 640 px the configuration is a bottom sheet, not a side panel (req 10.9).
+            It is offered only while the engine is idle, because every field inside it is
+            disabled during a run — an affordance that opens a sheet of dead inputs is worse
+            than no affordance.
+          */}
+          {isMobile && !isActive && (
             <Drawer open={settingsOpen} onOpenChange={setSettingsOpen}>
               <DrawerTrigger asChild>
                 <Button
@@ -903,35 +1031,59 @@ export default function BoxingTimer() {
             </Drawer>
           )}
 
-          {/* Background-audio limitation notice (requirement 4.6) */}
-          <div className="mt-8 flex items-start gap-2.5 rounded-lg bg-foreground/[0.03] px-3 py-2.5 text-[11px] leading-relaxed text-muted-foreground">
-            <Info className="mt-0.5 w-3.5 h-3.5 flex-shrink-0" aria-hidden="true" />
-            <div>
-              <p>
-                <span className="font-semibold text-foreground">Background audio:</span> iOS
-                suspends web audio while the browser is backgrounded or the screen is locked, so
-                the bell and warning ticks will not sound during that time. The timer itself keeps
-                running on wall-clock time and stays accurate — it catches up to the correct round
-                and remaining time as soon as you return to the foreground.
-              </p>
-              {notificationPermission === 'default' && (
-                <Button
-                  variant="link"
-                  size="sm"
-                  onClick={handleEnableNotifications}
-                  className="h-auto p-0 mt-1 text-[11px] gap-1.5"
-                >
-                  <BellRing className="w-3 h-3" />
-                  Enable round notifications
-                </Button>
-              )}
-              {notificationPermission === 'granted' && (
-                <p className="mt-1 text-[11px]">
-                  Round and rest notifications are on for this device.
+          {/*
+            Background-audio limitation notice (requirement 4.6), behind a disclosure.
+
+            The text is unchanged and still reachable from every phase — it is honest and users
+            deserve it — but it was a permanent five-line paragraph in the most valuable space
+            on the panel, truncated mid-sentence on a phone. One line now, expanded on demand,
+            with the notification opt-in it belongs with.
+          */}
+          <Collapsible open={audioNoteOpen} onOpenChange={setAudioNoteOpen} className="mt-4">
+            <CollapsibleTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className={`w-full justify-between gap-2 px-2 text-xs font-normal text-muted-foreground ${TOUCH_TARGET_CLASS}`}
+              >
+                <span className="flex items-center gap-2">
+                  <Info className="w-3.5 h-3.5 flex-shrink-0" aria-hidden="true" />
+                  Background audio &amp; notifications
+                </span>
+                <ChevronDown
+                  className={`w-4 h-4 flex-shrink-0 transition-transform duration-200 motion-reduce:transition-none ${
+                    audioNoteOpen ? 'rotate-180' : ''
+                  }`}
+                  aria-hidden="true"
+                />
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent>
+              <div className="mt-2 rounded-lg bg-foreground/[0.04] px-3 py-2.5 text-xs leading-relaxed text-muted-foreground">
+                <p>
+                  <span className="font-semibold text-foreground">Background audio:</span> iOS
+                  suspends web audio while the browser is backgrounded or the screen is locked, so
+                  the bell and warning ticks will not sound during that time. The timer itself
+                  keeps running on wall-clock time and stays accurate — it catches up to the
+                  correct round and remaining time as soon as you return to the foreground.
                 </p>
-              )}
-            </div>
-          </div>
+                {notificationPermission === 'default' && (
+                  <Button
+                    variant="link"
+                    size="sm"
+                    onClick={handleEnableNotifications}
+                    className="h-auto p-0 mt-2 text-xs gap-1.5"
+                  >
+                    <BellRing className="w-3 h-3" />
+                    Enable round notifications
+                  </Button>
+                )}
+                {notificationPermission === 'granted' && (
+                  <p className="mt-2">Round and rest notifications are on for this device.</p>
+                )}
+              </div>
+            </CollapsibleContent>
+          </Collapsible>
         </Card>
 
         {/* Sidebar: Settings (640 px and up) + Presets */}
