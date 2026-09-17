@@ -21,11 +21,31 @@
     --secondary-foreground: 240 5.9% 10%;
 
     --muted: 0 20% 96%;
-    --muted-foreground: 240 3.8% 46.1%;
+    /*
+     * Secondary copy. Lifted from 46.1% to 40% lightness: at 46.1% the ratio against white
+     * was 4.6:1, which cleared 4.5:1 only on paper — every place this token is combined with
+     * an opacity modifier (the ring stroke, the hairline separators) dropped well below it.
+     * 40% gives ~6.4:1, so the token still passes after a /70 or /50 knock-down.
+     */
+    --muted-foreground: 240 4% 40%;
 
     --accent: 0 60% 96%;
     /* Darker red reserved for small red text so it clears 4.5:1 on --background. */
     --accent-foreground: 0 72% 42%;
+
+    /*
+     * The two phase colours the timer paints across the room (work vs recover).
+     *
+     * They are separate from --primary because they are *filled* surfaces carrying text:
+     * white on --primary (0 84% 55%) is 4.2:1, which clears 3:1 for large type but not
+     * 4.5:1 for the round counter beside it. --work is the same hue at a lightness where
+     * white clears 4.5:1 on both, and --rest sits ~160° away so the "working or
+     * recovering?" glance never depends on reading a word.
+     */
+    --work: 0 72% 42%;
+    --work-foreground: 0 0% 100%;
+    --rest: 160 84% 26%;
+    --rest-foreground: 0 0% 100%;
 
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
@@ -81,10 +101,22 @@
 
     /* Muted stays neutral-dark so body copy keeps its existing contrast. */
     --muted: 240 3.7% 15.9%;
-    --muted-foreground: 240 5% 64.9%;
+    /* Lifted from 64.9% to 72% for the same reason as the light block: headroom for the
+     * opacity-modified uses, and for the 11–12 px type this token is most often applied to. */
+    --muted-foreground: 240 5% 72%;
 
     --accent: 0 30% 18%;
     --accent-foreground: 0 0% 98%;
+
+    /*
+     * Dark-mode phase surfaces. Work keeps white type on a vivid red; rest inverts —
+     * a bright green with near-black type — because a dark green fill disappears against
+     * a near-black card, and inverting is what keeps it vivid *and* over 4.5:1.
+     */
+    --work: 0 72% 45%;
+    --work-foreground: 0 0% 100%;
+    --rest: 160 84% 40%;
+    --rest-foreground: 160 90% 7%;
 
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
@@ -161,6 +193,23 @@
 }
 
 @layer utilities {
+  /*
+   * Safe areas. `app/layout.tsx` sets `viewportFit: 'cover'`, so the window paints under the
+   * notch / Dynamic Island and the home indicator. Anything pinned to an edge has to pay the
+   * inset back, or it renders *behind* the system UI: the sticky header's title collided with
+   * the status-bar clock and its right-hand controls (theme, mute, Sounds, Sync) sat under it.
+   *
+   * These are padding utilities, not margins or offsets, so an element keeps its declared
+   * content height (the header stays 56 px) and simply starts below the inset. The `0px`
+   * fallback keeps them inert on every browser without safe areas, including jsdom.
+   */
+  .pt-safe { padding-top: env(safe-area-inset-top, 0px); }
+  .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
+  .px-safe {
+    padding-left: env(safe-area-inset-left, 0px);
+    padding-right: env(safe-area-inset-right, 0px);
+  }
+
   /* Hide scrollbar */
   .scrollbar-none::-webkit-scrollbar { display: none; }
   .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }

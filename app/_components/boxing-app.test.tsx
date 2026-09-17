@@ -127,6 +127,77 @@ describe('BoxingApp navigation', () => {
   })
 })
 
+describe('BoxingApp chrome', () => {
+  beforeEach(() => {
+    window.localStorage.clear()
+    resetWorkoutLibraryForTests()
+    stubViewport({ mobile: true })
+    toastMock.mockClear()
+  })
+
+  it('pays back the safe-area insets the cover viewport paints under', () => {
+    const { container } = render(<BoxingApp />)
+
+    /*
+     * `viewportFit: 'cover'` in app/layout.tsx is deliberate, which makes the insets the
+     * header's problem: without them it started at y=0 behind the status bar, the title
+     * overlapped the system clock and the theme / mute / Sounds / Sync controls sat under the
+     * Dynamic Island — unreachable on the one device this app is used on.
+     */
+    const header = container.querySelector('header')
+    expect(header?.className).toContain('sticky')
+    expect(header?.className).toContain('pt-safe')
+    expect(header?.className).toContain('px-safe')
+
+    // The inset is *added*: the 56 px control row below it keeps its full height.
+    expect(header?.querySelector('div')?.className).toContain('h-14')
+
+    // The insets and the layout gutters are never on the same element — they set the same CSS
+    // property, so the loser would silently vanish on a device with no insets.
+    const main = container.querySelector('main')
+    expect(main?.className).toContain('px-safe')
+    expect(main?.className).toContain('pb-safe')
+    expect(main?.className).not.toMatch(/(^|\s)px-4/)
+  })
+
+  it('keeps every header control tappable and rendered once at phone width', () => {
+    render(<BoxingApp />)
+
+    const header = screen.getByRole('banner')
+    for (const name of [
+      /switch to (light|dark) mode/i,
+      /^mute$|^unmute$/i,
+      /sound settings/i,
+      /sync devices/i,
+    ]) {
+      const controls = within(header).getAllByRole('button', { name })
+      expect(controls).toHaveLength(1)
+      // Requirement 10.3: none of them is squeezed below a thumb.
+      expect(controls[0].className).toMatch(/min-h-\[44px\]|h-10|h-11/)
+    }
+  })
+
+  it('withdraws the introductory copy while a workout is on screen', () => {
+    render(<BoxingApp />)
+
+    // Idle: the hero and the first-run tip are the shell's welcome.
+    expect(screen.getByText(/train by the/i)).toBeInTheDocument()
+    expect(screen.getByText(/audio unlocks after you press start/i)).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /start workout/i }))
+
+    // Mid-workout they are ~160 px of a 390 px viewport spent on copy already read, directly
+    // above the two numbers the user is looking for.
+    expect(screen.queryByText(/train by the/i)).not.toBeInTheDocument()
+    expect(screen.queryByText(/audio unlocks after you press start/i)).not.toBeInTheDocument()
+    expect(screen.getByRole('timer')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByRole('button', { name: /^stop$/i }))
+
+    expect(screen.getByText(/train by the/i)).toBeInTheDocument()
+  })
+})
+
 describe('BoxingApp sound settings surface', () => {
   beforeEach(() => {
     window.localStorage.clear()

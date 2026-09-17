@@ -55,6 +55,17 @@ const config: Config = {
           DEFAULT: 'hsl(var(--destructive))',
           foreground: 'hsl(var(--destructive-foreground))',
         },
+        // The timer's two phase surfaces. Token-mapped like every other colour, so the
+        // light/dark values stay in app/globals.css and `bg-work` / `text-rest` need no
+        // `dark:` variant at the call site.
+        work: {
+          DEFAULT: 'hsl(var(--work))',
+          foreground: 'hsl(var(--work-foreground))',
+        },
+        rest: {
+          DEFAULT: 'hsl(var(--rest))',
+          foreground: 'hsl(var(--rest-foreground))',
+        },
         border: 'hsl(var(--border))',
         input: 'hsl(var(--input))',
         ring: 'hsl(var(--ring))',
